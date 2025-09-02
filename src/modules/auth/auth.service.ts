@@ -102,6 +102,8 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
       orgId: result.organization.id,
       email: result.user.email,
       role: result.user.role,
+      firstName: result.user.firstName,
+      lastName: result.user.lastName || undefined,
     };
 
     // Sign JWT token
@@ -178,6 +180,8 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
       orgId: user.organizationId,
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName || undefined,
     };
 
     // Sign JWT token
@@ -279,6 +283,8 @@ export async function acceptInvite(data: AcceptInviteRequest): Promise<AcceptInv
       orgId: updatedUser.organizationId,
       email: updatedUser.email,
       role: updatedUser.role,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName || undefined,
     };
 
     // Sign JWT token

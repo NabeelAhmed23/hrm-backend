@@ -6,6 +6,8 @@ export interface JWTPayload {
   orgId: string;
   email: string;
   role: string;
+  firstName: string;
+  lastName?: string;
 }
 
 // Configuration for JWT

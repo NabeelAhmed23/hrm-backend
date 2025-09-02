@@ -29,6 +29,14 @@ enum NotificationType {
   INFO
 }
 
+enum DocumentType {
+  CONTRACT
+  LICENSE
+  CERTIFICATION
+  POLICY
+  OTHER
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -91,22 +99,38 @@ model Employee {
 }
 
 model Document {
-  id         String   @id @default(uuid())
-  name       String
-  filePath   String
-  fileType   String
-  fileSize   Int
-  uploadedAt DateTime @default(now())
+  id          String      @id @default(uuid())
+  title       String      // Document title
+  description String?     // Optional description
+  type        DocumentType // Document category
+  fileUrl     String      // Local path or S3 URL
+  fileName    String      // Original file name
+  fileSize    Int         // File size in bytes
+  mimeType    String      // MIME type of file
+  metadata    Json?       @db.JsonB // Additional structured data
+  expiresAt   DateTime?   // Optional expiry date
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?   // Soft delete timestamp
 
   // Relationships
+  uploadedById String
+  uploadedBy   User   @relation("DocumentUploads", fields: [uploadedById], references: [id])
+  
   organizationId String
-  organization   Organization @relation("OrganizationDocuments", fields: [organizationId], references: [id])
-
+  organization   Organization @relation("OrganizationDocuments", fields: [organizationId], references: [id], onDelete: Cascade)
+  
   employeeId String?
   employee   Employee? @relation("EmployeeDocuments", fields: [employeeId], references: [id])
 
-  uploadedById String
-  uploadedBy   User   @relation("DocumentUploads", fields: [uploadedById], references: [id])
+  // Indexes for performance
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([uploadedById])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model Session {
