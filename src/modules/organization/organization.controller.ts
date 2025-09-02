@@ -28,8 +28,8 @@ export async function updateOrganizationController(
     const params = req.params as OrganizationIdParams;
     const organizationId = params.id;
 
-    // Request body is already validated by zod middleware
-    const validatedData = req.body as UpdateOrganizationRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as UpdateOrganizationRequest;
 
     // Update organization with proper authorization checks
     const result = await updateOrganization(

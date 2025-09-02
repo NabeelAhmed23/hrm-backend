@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { SignupRequest, LoginRequest } from "./validation/validation";
-import { signup, login } from "./auth.service";
+import { SignupRequest, LoginRequest, AcceptInviteRequest } from "./validation/validation";
+import { signup, login, acceptInvite } from "./auth.service";
 import { COOKIE_OPTIONS } from "./middleware/auth.middleware";
-import { AppError, isAppError } from "../../utils/error/error";
+import { isAppError } from "../../utils/error/error";
 
 /**
  * POST /auth/signup
@@ -14,8 +14,8 @@ export async function signupController(
   res: Response
 ): Promise<void> {
   try {
-    // Request body is already validated by zod-express-middleware
-    const validatedData = req.body as SignupRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as SignupRequest;
 
     // Create user and organization
     const result = await signup(validatedData);
@@ -64,8 +64,8 @@ export async function loginController(
   res: Response
 ): Promise<void> {
   try {
-    // Request body is already validated by zod-express-middleware
-    const validatedData = req.body as LoginRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as LoginRequest;
 
     // Authenticate user
     const result = await login(validatedData);
@@ -151,7 +151,7 @@ export async function meController(req: Request, res: Response): Promise<void> {
  * Clears the authentication cookie
  */
 export async function logoutController(
-  req: Request,
+  _req: Request,
   res: Response
 ): Promise<void> {
   try {
@@ -169,6 +169,55 @@ export async function logoutController(
     });
   } catch (error) {
     console.error("Logout controller error:", error);
+
+    // Handle custom application errors
+    if (isAppError(error)) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        code: error.code,
+        ...(error.details && { details: error.details }),
+      });
+      return;
+    }
+
+    // Handle unexpected errors
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
+/**
+ * POST /auth/accept-invite
+ * Accepts an employee invitation and activates their account
+ * Request body is validated by middleware
+ */
+export async function acceptInviteController(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as AcceptInviteRequest;
+
+    // Accept invitation
+    const result = await acceptInvite(validatedData);
+
+    // Set secure HTTP-only cookie
+    res.cookie("sessiontoken", result.token, COOKIE_OPTIONS);
+
+    // Send success response (without token in body for security)
+    res.status(200).json({
+      success: true,
+      message: "Invitation accepted successfully",
+      data: {
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    console.error("Accept invite controller error:", error);
 
     // Handle custom application errors
     if (isAppError(error)) {

@@ -16,6 +16,7 @@ datasource db {
 
 enum Role {
   USER
+  HR
   ADMIN
   SUPERADMIN
 }
@@ -58,6 +59,7 @@ model Employee {
   id        String   @id @default(uuid())
   firstName String
   lastName  String
+  email     String   @unique
   address   String
   city      String
   state     String
@@ -66,6 +68,7 @@ model Employee {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Soft delete field
 
   // Relationships
   organizationId String

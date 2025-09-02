@@ -1,5 +1,5 @@
-import { processRequestBody } from "zod-express-middleware";
-import { signupSchema, loginSchema } from "../validation/validation";
+import { validateRequest } from "../../../utils/validation/validateRequest";
+import { signupSchema, loginSchema, acceptInviteSchema } from "../validation/validation";
 import { Request, Response, NextFunction } from "express";
 import { JWTPayload, verifyJWT } from "../../../utils/jwt/jwt.utils";
 
@@ -13,10 +13,13 @@ declare global {
 }
 
 // Validation middleware for signup endpoint
-export const validateSignup = processRequestBody(signupSchema);
+export const validateSignup = validateRequest({ body: signupSchema });
 
 // Validation middleware for login endpoint
-export const validateLogin = processRequestBody(loginSchema);
+export const validateLogin = validateRequest({ body: loginSchema });
+
+// Validation middleware for accept invite endpoint
+export const validateAcceptInvite = validateRequest({ body: acceptInviteSchema });
 
 // Cookie configuration
 export const COOKIE_OPTIONS = {
@@ -77,7 +80,7 @@ export function authenticateToken(
  */
 export function optionalAuth(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void {
   try {

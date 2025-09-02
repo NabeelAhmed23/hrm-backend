@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { processRequestBody } from "zod-express-middleware";
+import { validateRequest } from "../../utils/validation/validateRequest";
 import {
   updateOrganizationController,
   getOrganizationController,
 } from "./organization.controller";
 import { 
   updateOrganizationSchema,
-  organizationIdSchema,
 } from "./validation/validation";
 import { 
   authenticateToken,
@@ -17,7 +16,7 @@ import {
 const organizationRouter = Router();
 
 // Validation middleware for organization update
-const validateOrganizationUpdate = processRequestBody(updateOrganizationSchema);
+const validateOrganizationUpdate = validateRequest({ body: updateOrganizationSchema });
 
 // Organization-specific middleware to extract org ID from route params
 const requireSameOrgFromParams = requireSameOrg((req) => req.params.id);

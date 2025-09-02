@@ -1,0 +1,124 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You're Invited to Join {{organizationName}}</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width:
+      600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+      .container { background-color: #ffffff; border-radius: 8px; padding: 40px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); } .header { text-align: center;
+      margin-bottom: 30px; } .logo { width: 60px; height: 60px;
+      background-color: #007bff; border-radius: 50%; margin: 0 auto 20px;
+      display: flex; align-items: center; justify-content: center; color: white;
+      font-size: 24px; font-weight: bold; } h1 { color: #2c3e50; margin: 0 0
+      10px; font-size: 28px; font-weight: 600; } .subtitle { color: #6c757d;
+      font-size: 16px; margin: 0; } .content { margin: 30px 0; } .greeting {
+      font-size: 18px; margin-bottom: 20px; } .message { margin-bottom: 30px;
+      font-size: 16px; line-height: 1.7; } .cta-container { text-align: center;
+      margin: 40px 0; } .cta-button { display: inline-block; background-color:
+      #007bff; color: #ffffff !important; text-decoration: none; padding: 16px
+      32px; border-radius: 6px; font-weight: 600; font-size: 16px; transition:
+      background-color 0.2s ease; } .cta-button:hover { background-color:
+      #0056b3; } .credentials-box { background-color: #f8f9fa; border: 1px solid
+      #e9ecef; border-radius: 6px; padding: 20px; margin: 20px 0; }
+      .credentials-title { font-weight: 600; color: #495057; margin: 0 0 10px; }
+      .credential-item { margin: 8px 0; font-family: monospace;
+      background-color: #ffffff; padding: 8px 12px; border-radius: 4px; border:
+      1px solid #dee2e6; } .security-note { background-color: #fff3cd; border:
+      1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin: 20px 0;
+      font-size: 14px; } .security-note strong { color: #856404; } .footer {
+      margin-top: 40px; padding-top: 20px; border-top: 1px solid #e9ecef;
+      text-align: center; font-size: 14px; color: #6c757d; } .footer a { color:
+      #007bff; text-decoration: none; } .expiry-notice { background-color:
+      #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 12px;
+      margin: 15px 0; font-size: 14px; color: #721c24; } @media only screen and
+      (max-width: 480px) { body { padding: 10px; } .container { padding: 20px; }
+      h1 { font-size: 24px; } .cta-button { padding: 14px 28px; font-size: 15px;
+      } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">
+          {{organizationName}}
+        </div>
+        <h1>Welcome to {{organizationName}}</h1>
+        <p class="subtitle">You've been invited to join our HR compliance
+          platform</p>
+      </div>
+
+      <div class="content">
+        <div class="greeting">
+          Hello
+          {{firstName}},
+        </div>
+
+        <div class="message">
+          <p>Great news! You have been invited to join
+            <strong>{{organizationName}}</strong>'s HR compliance system. This
+            platform will help you manage your employment information,
+            documents, and stay up-to-date with compliance requirements.</p>
+
+          <p>To get started, please click the button below to create your
+            account and set up your profile.</p>
+        </div>
+
+        <div class="cta-container">
+          <a href="{{inviteLink}}" class="cta-button">Accept Invitation & Create
+            Account</a>
+        </div>
+
+        {{#if tempPassword}}
+          <div class="credentials-box">
+            <div class="credentials-title">Your Temporary Login Credentials:</div>
+            <div class="credential-item">
+              <strong>Email:</strong>
+              Use your email address to login
+            </div>
+            <div class="credential-item">
+              <strong>Temporary Password:</strong>
+              {{tempPassword}}
+            </div>
+          </div>
+
+          <div class="security-note">
+            <strong>Important:</strong>
+            This is a temporary password. You will be prompted to create a new,
+            secure password when you first log in. Please keep this information
+            confidential.
+          </div>
+        {{/if}}
+
+        <div class="expiry-notice">
+          <strong>Note:</strong>
+          This invitation link will expire in 7 days for security reasons.
+          Please complete your account setup as soon as possible.
+        </div>
+
+        <div class="message">
+          <p>If you have any questions about your account or need assistance,
+            please don't hesitate to contact your HR administrator.</p>
+
+          <p>We look forward to working with you!</p>
+
+          <p>Best regards,<br />
+            The
+            {{organizationName}}
+            Team</p>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>This email was sent from
+          {{organizationName}}'s HR Compliance System.</p>
+        <p>If you did not expect this invitation, please contact your HR
+          department.</p>
+        <p><small>For security reasons, do not forward this email or share the
+            invitation link with others.</small></p>
+      </div>
+    </div>
+  </body>
+</html>

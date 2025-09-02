@@ -3,11 +3,13 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node",
-    "module": "commonjs", // or "nodenext" if you prefer ESM
+    "module": "commonjs",
     "target": "ES2020",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "skipLibCheck": true
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "scripts", "templates"]
 }

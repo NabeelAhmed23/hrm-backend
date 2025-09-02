@@ -4,11 +4,13 @@ import {
   loginController,
   meController,
   logoutController,
+  acceptInviteController,
 } from "./auth.controller";
 import {
   authenticateToken,
   validateLogin,
   validateSignup,
+  validateAcceptInvite,
 } from "./middleware/auth.middleware";
 
 const authRouter = Router();
@@ -24,5 +26,8 @@ authRouter.get("/me", authenticateToken, meController);
 
 // POST /auth/logout - Clear authentication cookie
 authRouter.post("/logout", logoutController);
+
+// POST /auth/accept-invite - Accept employee invitation and activate account
+authRouter.post("/accept-invite", validateAcceptInvite, acceptInviteController);
 
 export default authRouter;
