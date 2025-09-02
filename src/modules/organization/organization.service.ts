@@ -25,7 +25,7 @@ export interface UpdateOrganizationResponse {
  */
 export async function updateOrganization(
   organizationId: string,
-  userId: string,
+  _userId: string,
   userOrgId: string,
   userRole: Role,
   data: UpdateOrganizationRequest
@@ -38,12 +38,10 @@ export async function updateOrganization(
       );
     }
 
-    // Role-based authorization: Only ADMIN or HR can update organization details
-    if (userRole !== Role.ADMIN && userRole !== Role.SUPERADMIN) {
-      // Note: HR role doesn't exist in the current schema, so we only allow ADMIN and SUPERADMIN
-      // If HR role is needed, it should be added to the Role enum in the Prisma schema
+    // Role-based authorization: Only ADMIN, HR, or SUPERADMIN can update organization details
+    if (userRole !== Role.ADMIN && userRole !== Role.HR && userRole !== Role.SUPERADMIN) {
       throw new AuthorizationError(
-        "Only administrators can update organization details"
+        "Only administrators and HR personnel can update organization details"
       );
     }
 

@@ -6,7 +6,6 @@ import {
 } from "./organization.controller";
 import { 
   updateOrganizationSchema,
-  organizationIdSchema,
 } from "./validation/validation";
 import { 
   authenticateToken,
