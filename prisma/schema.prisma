@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String?
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Each user belongs to exactly one organization
+  organizationId String
+  organization   Organization @relation("OrganizationUsers", fields: [organizationId], references: [id])
+
+  // Relationships
+  sessions  Session[]
+  employee  Employee? // If this user is also an employee in one org
+  documents Document[] @relation("DocumentUploads") // Documents uploaded by this user
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  industry  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  users     User[]     @relation("OrganizationUsers") // All users in this organization
+  employees Employee[]
+  documents Document[] @relation("OrganizationDocuments")
+}
+
+model Employee {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  address   String
+  city      String
+  state     String
+  country   String
+  dob       DateTime
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  documents Document[] @relation("EmployeeDocuments")
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  name       String
+  filePath   String
+  fileType   String
+  fileSize   Int
+  uploadedAt DateTime @default(now())
+
+  // Relationships
+  organizationId String
+  organization   Organization @relation("OrganizationDocuments", fields: [organizationId], references: [id])
+
+  employeeId String?
+  employee   Employee? @relation("EmployeeDocuments", fields: [employeeId], references: [id])
+
+  uploadedById String
+  uploadedBy   User   @relation("DocumentUploads", fields: [uploadedById], references: [id])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
