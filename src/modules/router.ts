@@ -2,6 +2,7 @@ import express from "express";
 import authRouter from "./auth/auth.router";
 import organizationRouter from "./organization/organization.router";
 import employeeRouter from "./employee/employee.router";
+import notificationRouter from "./notification/notification.router";
 
 const router = express.Router();
 
@@ -13,5 +14,8 @@ router.use("/organizations", organizationRouter);
 
 // Mount employee routes
 router.use("/employees", employeeRouter);
+
+// Mount notification routes
+router.use("/notifications", notificationRouter);
 
 export default router;
