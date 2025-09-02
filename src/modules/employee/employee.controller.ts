@@ -31,8 +31,8 @@ export async function createEmployeeController(
     const user = req.user!;
     const { orgId, role } = user;
 
-    // Request body is already validated by zod middleware
-    const validatedData = req.body as CreateEmployeeRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as CreateEmployeeRequest;
 
     // Create employee
     const result = await createEmployee(orgId, role as Role, validatedData);
@@ -195,7 +195,7 @@ export async function updateEmployeeController(
     const employeeId = params.id;
 
     // Request body is already validated by zod middleware
-    const validatedData = req.body as UpdateEmployeeRequest;
+    const validatedData = req.validated.body as UpdateEmployeeRequest;
 
     // Update employee
     const result = await updateEmployee(
@@ -285,6 +285,14 @@ export async function deleteEmployeeController(
 /**
  * POST /employees/:id/invite
  * Invites an employee by creating a User account linked to them
+ * 
+ * Features:
+ * - Creates User account immediately with temporary password
+ * - Validates employee exists and belongs to inviter's organization
+ * - Ensures inviter has HR or ADMIN role
+ * - Prevents duplicate invites
+ * - Sends professional email invitation with temporary credentials
+ * 
  * Requires HR or ADMIN role
  * Employee must belong to the same organization as the authenticated user
  */
@@ -297,14 +305,14 @@ export async function inviteEmployeeController(
     const user = req.user!;
     const { orgId, role } = user;
 
-    // Extract route parameters (already validated by zod middleware)
+    // Extract route parameters (already validated by middleware)
     const params = req.params as EmployeeIdParams;
     const employeeId = params.id;
 
-    // Request body is already validated by zod middleware
-    const validatedData = req.body as InviteEmployeeRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as InviteEmployeeRequest;
 
-    // Invite employee
+    // Invite employee using existing service
     const result = await inviteEmployee(
       employeeId,
       orgId,
@@ -314,7 +322,7 @@ export async function inviteEmployeeController(
 
     // Send success response
     res.status(201).json({
-      success: true,
+      success: result.success,
       message: result.message,
       data: {
         user: result.user,
@@ -322,7 +330,7 @@ export async function inviteEmployeeController(
       },
     });
   } catch (error) {
-    console.error("Invite employee controller error:", error);
+    console.error("❌ Invite employee controller error:", error);
 
     // Handle custom application errors
     if (isAppError(error)) {

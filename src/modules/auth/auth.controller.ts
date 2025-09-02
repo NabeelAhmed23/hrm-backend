@@ -14,8 +14,8 @@ export async function signupController(
   res: Response
 ): Promise<void> {
   try {
-    // Request body is already validated by zod-express-middleware
-    const validatedData = req.body as SignupRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as SignupRequest;
 
     // Create user and organization
     const result = await signup(validatedData);
@@ -64,8 +64,8 @@ export async function loginController(
   res: Response
 ): Promise<void> {
   try {
-    // Request body is already validated by zod-express-middleware
-    const validatedData = req.body as LoginRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as LoginRequest;
 
     // Authenticate user
     const result = await login(validatedData);
@@ -199,8 +199,8 @@ export async function acceptInviteController(
   res: Response
 ): Promise<void> {
   try {
-    // Request body is already validated by zod-express-middleware
-    const validatedData = req.body as AcceptInviteRequest;
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as AcceptInviteRequest;
 
     // Accept invitation
     const result = await acceptInvite(validatedData);

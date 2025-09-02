@@ -1,7 +1,7 @@
 import { Employee, Role, User } from "../../../generated/prisma";
-import { 
-  CreateEmployeeRequest, 
-  UpdateEmployeeRequest, 
+import {
+  CreateEmployeeRequest,
+  UpdateEmployeeRequest,
   GetEmployeesQuery,
   InviteEmployeeRequest,
 } from "./validation/validation";
@@ -13,7 +13,11 @@ import {
   handlePrismaError,
   InternalServerError,
 } from "../../utils/error/error";
-import { generateInviteToken, hashPassword } from "../../utils/invite/invite.utils";
+import {
+  generateInviteToken,
+  hashPassword,
+} from "../../utils/invite/invite.utils";
+import { emailService } from "../../services/emailService";
 
 // Response interfaces
 export interface EmployeeResponse {
@@ -76,7 +80,9 @@ function hasHROrAdminRole(role: Role): boolean {
 /**
  * Utility function to format employee data for response
  */
-function formatEmployeeResponse(employee: Employee & { user?: User | null }): EmployeeResponse {
+function formatEmployeeResponse(
+  employee: Employee & { user?: User | null }
+): EmployeeResponse {
   return {
     id: employee.id,
     firstName: employee.firstName,
@@ -189,14 +195,14 @@ export async function getEmployees(
     // Search filter
     if (search) {
       where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { 
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        {
           user: {
-            email: { contains: search, mode: 'insensitive' }
-          }
-        }
+            email: { contains: search, mode: "insensitive" },
+          },
+        },
       ];
     }
 
@@ -210,8 +216,8 @@ export async function getEmployees(
         user: true,
       },
       orderBy: [
-        { deletedAt: 'asc' }, // Non-deleted first
-        { createdAt: 'desc' }
+        { deletedAt: "asc" }, // Non-deleted first
+        { createdAt: "desc" },
       ],
       skip,
       take: limit,
@@ -339,10 +345,7 @@ export async function updateEmployee(
     console.error("Update employee error:", error);
 
     // Re-throw custom errors
-    if (
-      error instanceof NotFoundError ||
-      error instanceof AuthorizationError
-    ) {
+    if (error instanceof NotFoundError || error instanceof AuthorizationError) {
       throw error;
     }
 
@@ -400,10 +403,7 @@ export async function deleteEmployee(
     console.error("Delete employee error:", error);
 
     // Re-throw custom errors
-    if (
-      error instanceof NotFoundError ||
-      error instanceof AuthorizationError
-    ) {
+    if (error instanceof NotFoundError || error instanceof AuthorizationError) {
       throw error;
     }
 
@@ -453,71 +453,139 @@ export async function inviteEmployee(
       throw new NotFoundError("Employee");
     }
 
+    let user;
+    let temporaryPassword;
+    let isNewUser = false;
+
     // Check if employee already has a user account
     if (existingEmployee.userId) {
-      throw new ConflictError(
-        "Employee already has a user account"
-      );
-    }
-
-    // Check if email is already in use by another user
-    const existingUser = await prisma.user.findUnique({
-      where: { email: existingEmployee.email },
-    });
-
-    if (existingUser) {
-      throw new ConflictError(
-        "Employee email is already in use by another user account"
-      );
-    }
-
-    // Generate temporary password and invite token
-    const temporaryPassword = Math.random().toString(36).slice(-12);
-    const hashedPassword = await hashPassword(temporaryPassword);
-    const inviteToken = generateInviteToken();
-
-    // Create user account in transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create user
-      const user = await tx.user.create({
-        data: {
-          email: existingEmployee.email,
-          password: hashedPassword,
-          firstName: existingEmployee.firstName,
-          lastName: existingEmployee.lastName,
-          role: Role.USER, // Default role for invited employees
-          isActive: false, // Account is inactive until invite is accepted
-          organizationId,
-        },
+      // Employee already has a user account, get existing user
+      user = await prisma.user.findUnique({
+        where: { id: existingEmployee.userId },
       });
 
-      // Link user to employee
-      await tx.employee.update({
-        where: { id: employeeId },
+      if (!user) {
+        throw new InternalServerError(
+          "User account linked to employee not found"
+        );
+      }
+
+      // Check if user account is already active (user has logged in)
+      if (user.isActive) {
+        throw new ConflictError(
+          "Employee already has an active user account and cannot be re-invited"
+        );
+      }
+
+      // For existing inactive users, we need to generate a new temporary password
+      // since we can't retrieve the old one (it's hashed)
+      temporaryPassword = Math.random().toString(36).slice(-12);
+      const hashedPassword = await hashPassword(temporaryPassword);
+
+      // Update the existing user with new temporary password
+      user = await prisma.user.update({
+        where: { id: user.id },
         data: {
-          userId: user.id,
+          password: hashedPassword,
           updatedAt: new Date(),
         },
       });
 
-      return { user };
-    });
+      console.log(
+        `🔄 Resending invite for existing inactive user: ${user.email}`
+      );
+    } else {
+      // Check if email is already in use by another user
+      const existingUser = await prisma.user.findUnique({
+        where: { email: existingEmployee.email },
+      });
 
-    // TODO: Send invitation email with invite token and temporary password
-    // This would typically integrate with an email service like SendGrid, SES, etc.
+      if (existingUser) {
+        throw new ConflictError(
+          "Employee email is already in use by another user account"
+        );
+      }
+
+      // Generate temporary password and invite token for new user
+      temporaryPassword = Math.random().toString(36).slice(-12);
+      const hashedPassword = await hashPassword(temporaryPassword);
+
+      // Create user account in transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Create user
+        const newUser = await tx.user.create({
+          data: {
+            email: existingEmployee.email,
+            password: hashedPassword,
+            firstName: existingEmployee.firstName,
+            lastName: existingEmployee.lastName,
+            role: Role.USER, // Default role for invited employees
+            isActive: false, // Account is inactive until invite is accepted
+            organizationId,
+          },
+        });
+
+        // Link user to employee
+        await tx.employee.update({
+          where: { id: employeeId },
+          data: {
+            userId: newUser.id,
+            updatedAt: new Date(),
+          },
+        });
+
+        return { user: newUser };
+      });
+
+      user = result.user;
+      isNewUser = true;
+      console.log(`✨ Created new user account for employee: ${user.email}`);
+    }
+
+    // Send invitation email with invite token and temporary password
     if (data.sendEmail) {
-      console.log(`Sending invite email to ${existingEmployee.email} with token: ${inviteToken}`);
-      // await sendInviteEmail(existingEmployee.email, inviteToken, temporaryPassword);
+      try {
+        // Get organization name for email template
+        const organization = await prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: { name: true },
+        });
+
+        const organizationName = organization?.name || "Your Organization";
+
+        // Build invite link with token
+        const inviteToken = generateInviteToken();
+        const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+        const inviteLink = `${baseUrl}/auth/invite/${inviteToken}?email=${existingEmployee.email}`;
+
+        // Send professional invite email
+        await emailService.sendInviteEmail(existingEmployee.email, inviteLink, {
+          firstName: existingEmployee.firstName,
+          organizationName,
+          tempPassword: temporaryPassword, // Include temporary password in email
+          inviteLink, // Also include in data for template
+        });
+
+        console.log(`✅ Invite email sent to ${existingEmployee.email}`);
+      } catch (emailError) {
+        console.error("❌ Failed to send invite email:", emailError);
+        // Don't fail the whole operation if email fails, just log it
+        console.log(
+          `⚠️ User account created but email delivery failed for ${existingEmployee.email}`
+        );
+      }
     }
 
     return {
       success: true,
-      message: "Employee invited successfully",
-      inviteToken: data.sendEmail ? undefined : inviteToken, // Only return token if email not sent
+      message: isNewUser
+        ? "Employee invited successfully"
+        : "Invitation resent successfully",
+      inviteToken: data.sendEmail ? undefined : generateInviteToken(), // Only return token if email not sent
       user: {
-        id: result.user.id,
-        email: result.user.email,
-        role: result.user.role,
+        id: user.id,
+        email: user.email,
+        role: user.role,
       },
     };
   } catch (error) {

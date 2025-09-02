@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Reminder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .icon {
+            width: 60px;
+            height: 60px;
+            background-color: #ffc107;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin: 0 0 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: #6c757d;
+            font-size: 16px;
+            margin: 0;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        .reminder-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .reminder-box h3 {
+            color: #856404;
+            margin: 0 0 15px;
+            font-size: 18px;
+        }
+        .reminder-content {
+            color: #212529;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .action-required {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .action-required h3 {
+            color: #721c24;
+            margin: 0 0 15px;
+            font-size: 16px;
+        }
+        .action-required p {
+            color: #721c24;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .next-steps {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .next-steps h3 {
+            color: #0c5460;
+            margin: 0 0 15px;
+            font-size: 16px;
+        }
+        .next-steps ul {
+            margin: 10px 0 0;
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin: 8px 0;
+            color: #495057;
+            font-size: 14px;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: background-color 0.2s ease;
+        }
+        .cta-button:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .contact-info {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .contact-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+        @media only screen and (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            .cta-button {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">
+                ⚠️
+            </div>
+            <h1>Compliance Reminder</h1>
+            <p class="subtitle">Important information regarding your compliance requirements</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hello {{firstName}},
+            </div>
+
+            <div class="message">
+                <p>This is an important reminder regarding compliance requirements for employees at <strong>{{organizationName}}</strong>.</p>
+                
+                <p>Please review the following information carefully and take any necessary actions.</p>
+            </div>
+
+            <div class="reminder-box">
+                <h3>Compliance Notice:</h3>
+                <div class="reminder-content">
+                    {{message}}
+                </div>
+            </div>
+
+            <div class="action-required">
+                <h3>Action Required</h3>
+                <p>Please address this compliance requirement promptly to ensure continued adherence to company policies and regulatory standards.</p>
+                <p>Failure to comply may result in delays or complications with your employment status.</p>
+            </div>
+
+            <div class="next-steps">
+                <h3>What to do next:</h3>
+                <ul>
+                    <li>Review the compliance requirement detailed above</li>
+                    <li>Gather any necessary documentation or information</li>
+                    <li>Contact HR if you have questions or need assistance</li>
+                    <li>Complete any required actions by the specified deadline</li>
+                    <li>Keep records of your compliance activities</li>
+                </ul>
+            </div>
+
+            <div class="cta-container">
+                <a href="#" class="cta-button">Access Compliance Portal</a>
+            </div>
+
+            <div class="contact-info">
+                <p><strong>Need Help?</strong></p>
+                <p>Contact your HR department if you have questions about this requirement.</p>
+                <p>They can provide guidance and assistance with compliance matters.</p>
+            </div>
+
+            <div class="message">
+                <p>Thank you for your attention to this important matter. Your cooperation helps maintain our organization's commitment to compliance and regulatory excellence.</p>
+                
+                <p>Best regards,<br>
+                {{organizationName}} Compliance Team</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This compliance reminder was sent from {{organizationName}}'s HR Compliance System.</p>
+            <p>Please do not reply to this automated message. Contact HR directly for assistance.</p>
+            <p><small>This message contains important compliance information. Please retain for your records.</small></p>
+        </div>
+    </div>
+</body>
+</html>

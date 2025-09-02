@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { processRequestBody } from "zod-express-middleware";
+import { validateRequest } from "../../utils/validation/validateRequest";
 import {
   createEmployeeController,
   getEmployeesController,
@@ -12,6 +12,7 @@ import {
   createEmployeeSchema,
   updateEmployeeSchema,
   inviteEmployeeSchema,
+  employeeIdSchema,
 } from "./validation/validation";
 import {
   authenticateToken,
@@ -21,9 +22,13 @@ import {
 const employeeRouter = Router();
 
 // Validation middleware
-const validateCreateEmployee = processRequestBody(createEmployeeSchema);
-const validateUpdateEmployee = processRequestBody(updateEmployeeSchema);
-const validateInviteEmployee = processRequestBody(inviteEmployeeSchema);
+const validateCreateEmployee = validateRequest({ body: createEmployeeSchema });
+const validateUpdateEmployee = validateRequest({ body: updateEmployeeSchema });
+const validateInviteEmployee = validateRequest({ 
+  body: inviteEmployeeSchema, 
+  params: employeeIdSchema 
+});
+const validateEmployeeId = validateRequest({ params: employeeIdSchema });
 
 // Role-based middleware for HR and ADMIN operations
 const requireHROrAdmin = requireRole("HR", "ADMIN", "SUPERADMIN");
@@ -62,11 +67,13 @@ employeeRouter.get(
  * Gets details of a single employee
  * Requires:
  * - Authentication (JWT token)
+ * - Valid employee ID (UUID)
  * - Employee must belong to the same organization
  */
 employeeRouter.get(
   "/:id",
   authenticateToken,            // Verify JWT and populate req.user
+  validateEmployeeId,           // Validate employee ID parameter
   getEmployeeByIdController
 );
 
@@ -76,6 +83,7 @@ employeeRouter.get(
  * Requires:
  * - Authentication (JWT token)
  * - HR or ADMIN role
+ * - Valid employee ID (UUID)
  * - Valid request body (updated employee details)
  * - Employee must belong to the same organization
  */
@@ -83,7 +91,7 @@ employeeRouter.put(
   "/:id",
   authenticateToken,        // Verify JWT and populate req.user
   requireHROrAdmin,         // Only HR and ADMIN can update employees
-  validateUpdateEmployee,   // Validate request body
+  validateRequest({ body: updateEmployeeSchema, params: employeeIdSchema }), // Validate both body and params
   updateEmployeeController
 );
 
@@ -93,12 +101,14 @@ employeeRouter.put(
  * Requires:
  * - Authentication (JWT token)
  * - HR or ADMIN role
+ * - Valid employee ID (UUID)
  * - Employee must belong to the same organization
  */
 employeeRouter.delete(
   "/:id",
   authenticateToken,        // Verify JWT and populate req.user
   requireHROrAdmin,         // Only HR and ADMIN can delete employees
+  validateEmployeeId,       // Validate employee ID parameter
   deleteEmployeeController
 );
 
