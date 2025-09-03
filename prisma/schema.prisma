@@ -57,6 +57,7 @@ model User {
   employee  Employee? // If this user is also an employee in one org
   documents Document[] @relation("DocumentUploads") // Documents uploaded by this user
   notifications Notification[] // Notifications for this user
+  passwordResetTokens PasswordResetToken[] // Password reset tokens for this user
 }
 
 model Organization {
@@ -164,4 +165,20 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
   @@index([type])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // Secure random token
+  userId    String   // User requesting password reset
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime // Token expiry timestamp (typically 1 hour from creation)
+  used      Boolean  @default(false) // Single-use token flag
+  createdAt DateTime @default(now())
+
+  // Indexes for performance
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([used])
 }

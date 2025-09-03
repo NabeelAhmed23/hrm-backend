@@ -1,18 +1,29 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { Organization, Role } from "../../../generated/prisma";
-import { SignupRequest, LoginRequest, AcceptInviteRequest } from "./validation/validation";
+import {
+  SignupRequest,
+  LoginRequest,
+  AcceptInviteRequest,
+} from "./validation/validation";
 import { signJWT, JWTPayload } from "../../utils/jwt/jwt.utils";
 import prisma from "../../utils/config/db";
+import { emailService } from "../../services/emailService";
 import {
   ConflictError,
   AuthenticationError,
   AccountDeactivatedError,
   InternalServerError,
+  NotFoundError,
+  ValidationError,
   handlePrismaError,
 } from "../../utils/error/error";
 
 // Salt rounds for bcrypt password hashing
 const BCRYPT_SALT_ROUNDS = 12;
+
+// Password reset token expiration (1 hour in milliseconds)
+const PASSWORD_RESET_EXPIRY = 60 * 60 * 1000;
 
 // Response interfaces
 export interface SignupResponse {
@@ -52,6 +63,16 @@ export interface AcceptInviteResponse {
     organization: Organization;
   };
   token: string; // For cookie setting
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 /**
@@ -133,12 +154,12 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
     }
 
     // Handle Prisma errors
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       throw handlePrismaError(error);
     }
 
     // Handle bcrypt errors
-    if (error instanceof Error && error.message.includes('bcrypt')) {
+    if (error instanceof Error && error.message.includes("bcrypt")) {
       throw new InternalServerError("Password hashing failed");
     }
 
@@ -203,18 +224,20 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     console.error("Login error:", error);
 
     // Re-throw custom errors as they are
-    if (error instanceof AuthenticationError || 
-        error instanceof AccountDeactivatedError) {
+    if (
+      error instanceof AuthenticationError ||
+      error instanceof AccountDeactivatedError
+    ) {
       throw error;
     }
 
     // Handle Prisma errors
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       throw handlePrismaError(error);
     }
 
     // Handle bcrypt errors
-    if (error instanceof Error && error.message.includes('bcrypt')) {
+    if (error instanceof Error && error.message.includes("bcrypt")) {
       throw new InternalServerError("Password verification failed");
     }
 
@@ -227,7 +250,9 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
  * Accepts an employee invitation and activates their account
  * Allows the invited employee to set their password and activate their account
  */
-export async function acceptInvite(data: AcceptInviteRequest): Promise<AcceptInviteResponse> {
+export async function acceptInvite(
+  data: AcceptInviteRequest
+): Promise<AcceptInviteResponse> {
   try {
     // For now, we'll simulate token validation
     // In production, you'd store invite tokens in a separate table with expiration
@@ -236,12 +261,12 @@ export async function acceptInvite(data: AcceptInviteRequest): Promise<AcceptInv
     // Find user by email (temporary approach - in production, store tokens properly)
     // For this demo, we'll assume the token contains encoded user information
     // In reality, you'd have an InviteToken table that maps tokens to users
-    
+
     // This is a simplified implementation - in production you'd:
     // 1. Store invite tokens in database with expiration
     // 2. Validate token exists and hasn't expired
     // 3. Get user ID from token record
-    
+
     // For now, find any inactive user (recently invited)
     const user = await prisma.user.findFirst({
       where: {
@@ -324,6 +349,175 @@ export async function acceptInvite(data: AcceptInviteRequest): Promise<AcceptInv
     }
 
     // Handle unexpected errors
-    throw new InternalServerError("An unexpected error occurred while accepting invitation");
+    throw new InternalServerError(
+      "An unexpected error occurred while accepting invitation"
+    );
+  }
+}
+
+/**
+ * Generates a secure password reset token for a user
+ * Always returns success to prevent email enumeration attacks
+ * Sends email with reset link if user exists
+ */
+export async function requestPasswordReset(
+  email: string
+): Promise<ForgotPasswordResponse> {
+  try {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Always return success response to prevent email enumeration
+    if (!user || !user.isActive) {
+      return {
+        success: true,
+        message:
+          "If an account with this email exists, you will receive a password reset link.",
+      };
+    }
+
+    // Generate secure random token (32 bytes = 64 hex characters)
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // Calculate expiry time (1 hour from now)
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY);
+
+    // Create password reset token in database (transaction for consistency)
+    await prisma.$transaction(async (tx) => {
+      // Invalidate any existing reset tokens for this user
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: user.id,
+          used: false,
+          expiresAt: { gte: new Date() }, // Only update non-expired tokens
+        },
+        data: {
+          used: true, // Mark as used to invalidate
+        },
+      });
+
+      // Create new reset token
+      await tx.passwordResetToken.create({
+        data: {
+          token: resetToken,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+    });
+
+    // Construct reset link using environment variable
+    const resetUrl = `${
+      process.env.APP_URL ? process.env.APP_URL : "http://localhost:3000"
+    }/reset-password/`;
+    const resetLink = `${resetUrl}token/${resetToken}`;
+
+    // Send password reset email
+    await emailService.sendPasswordReset(user.email, resetLink, {
+      firstName: user.firstName,
+      resetLink,
+    });
+
+    return {
+      success: true,
+      message:
+        "If an account with this email exists, you will receive a password reset link.",
+    };
+  } catch (error) {
+    console.error("Password reset request error:", error);
+
+    // Always return success to prevent information leakage
+    // Log the actual error for debugging but don't expose to client
+    return {
+      success: true,
+      message:
+        "If an account with this email exists, you will receive a password reset link.",
+    };
+  }
+}
+
+/**
+ * Validates reset token and updates user password
+ * Implements single-use tokens and expiry validation
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<ResetPasswordResponse> {
+  try {
+    // Find valid, unused, non-expired reset token
+    const resetTokenRecord = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetTokenRecord) {
+      throw new ValidationError("Invalid or expired reset token");
+    }
+
+    if (resetTokenRecord.used) {
+      throw new ValidationError("Reset token has already been used");
+    }
+
+    if (resetTokenRecord.expiresAt < new Date()) {
+      throw new ValidationError("Reset token has expired");
+    }
+
+    if (!resetTokenRecord.user.isActive) {
+      throw new ValidationError("Account is deactivated");
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+    // Update password and invalidate token in transaction
+    await prisma.$transaction(async (tx) => {
+      // Update user password
+      await tx.user.update({
+        where: { id: resetTokenRecord.userId },
+        data: {
+          password: hashedPassword,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Mark reset token as used
+      await tx.passwordResetToken.update({
+        where: { id: resetTokenRecord.id },
+        data: {
+          used: true,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message:
+        "Password has been reset successfully. You can now log in with your new password.",
+    };
+  } catch (error) {
+    console.error("Password reset error:", error);
+
+    // Re-throw validation errors (these are safe to expose)
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+
+    // Handle Prisma errors
+    if (error && typeof error === "object" && "code" in error) {
+      throw handlePrismaError(error);
+    }
+
+    // Handle bcrypt errors
+    if (error instanceof Error && error.message.includes("bcrypt")) {
+      throw new InternalServerError("Password hashing failed");
+    }
+
+    // Handle unexpected errors
+    throw new InternalServerError(
+      "An unexpected error occurred while resetting password"
+    );
   }
 }

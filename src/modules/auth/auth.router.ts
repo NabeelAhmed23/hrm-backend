@@ -5,12 +5,16 @@ import {
   meController,
   logoutController,
   acceptInviteController,
+  forgotPasswordController,
+  resetPasswordController,
 } from "./auth.controller";
 import {
   authenticateToken,
   validateLogin,
   validateSignup,
   validateAcceptInvite,
+  validateForgotPassword,
+  validateResetPassword,
 } from "./middleware/auth.middleware";
 
 const authRouter = Router();
@@ -29,5 +33,11 @@ authRouter.post("/logout", logoutController);
 
 // POST /auth/accept-invite - Accept employee invitation and activate account
 authRouter.post("/accept-invite", validateAcceptInvite, acceptInviteController);
+
+// POST /auth/forgot-password - Request password reset (always returns success)
+authRouter.post("/forgot-password", validateForgotPassword, forgotPasswordController);
+
+// POST /auth/reset-password - Reset password with token
+authRouter.post("/reset-password", validateResetPassword, resetPasswordController);
 
 export default authRouter;

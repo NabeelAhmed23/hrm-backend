@@ -1,5 +1,5 @@
 import { validateRequest } from "../../../utils/validation/validateRequest";
-import { signupSchema, loginSchema, acceptInviteSchema } from "../validation/validation";
+import { signupSchema, loginSchema, acceptInviteSchema, forgotPasswordSchema, resetPasswordSchema } from "../validation/validation";
 import { Request, Response, NextFunction } from "express";
 import { JWTPayload, verifyJWT } from "../../../utils/jwt/jwt.utils";
 
@@ -20,6 +20,12 @@ export const validateLogin = validateRequest({ body: loginSchema });
 
 // Validation middleware for accept invite endpoint
 export const validateAcceptInvite = validateRequest({ body: acceptInviteSchema });
+
+// Validation middleware for forgot password endpoint
+export const validateForgotPassword = validateRequest({ body: forgotPasswordSchema });
+
+// Validation middleware for reset password endpoint
+export const validateResetPassword = validateRequest({ body: resetPasswordSchema });
 
 // Cookie configuration
 export const COOKIE_OPTIONS = {

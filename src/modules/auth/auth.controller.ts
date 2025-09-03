@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { SignupRequest, LoginRequest, AcceptInviteRequest } from "./validation/validation";
-import { signup, login, acceptInvite } from "./auth.service";
+import { SignupRequest, LoginRequest, AcceptInviteRequest, ForgotPasswordRequest, ResetPasswordRequest } from "./validation/validation";
+import { signup, login, acceptInvite, requestPasswordReset, resetPassword } from "./auth.service";
 import { COOKIE_OPTIONS } from "./middleware/auth.middleware";
 import { isAppError } from "../../utils/error/error";
 
@@ -218,6 +218,81 @@ export async function acceptInviteController(
     });
   } catch (error) {
     console.error("Accept invite controller error:", error);
+
+    // Handle custom application errors
+    if (isAppError(error)) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        code: error.code,
+        ...(error.details && { details: error.details }),
+      });
+      return;
+    }
+
+    // Handle unexpected errors
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
+/**
+ * POST /auth/forgot-password
+ * Generates password reset token and sends email
+ * Always returns success to prevent email enumeration attacks
+ */
+export async function forgotPasswordController(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as ForgotPasswordRequest;
+
+    // Request password reset (always returns success)
+    const result = await requestPasswordReset(validatedData.email);
+
+    // Always return 200 with success message (security best practice)
+    res.status(200).json({
+      success: result.success,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("Forgot password controller error:", error);
+
+    // Always return success message to prevent information leakage
+    // Even if there's an internal error, we don't want to reveal it
+    res.status(200).json({
+      success: true,
+      message: "If an account with this email exists, you will receive a password reset link.",
+    });
+  }
+}
+
+/**
+ * POST /auth/reset-password
+ * Validates reset token and updates user password
+ * Returns specific error messages for better UX (token validation is safe to expose)
+ */
+export async function resetPasswordController(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Request body is already validated by custom validation middleware
+    const validatedData = req.validated.body as ResetPasswordRequest;
+
+    // Reset password with token validation
+    const result = await resetPassword(validatedData.token, validatedData.newPassword);
+
+    res.status(200).json({
+      success: result.success,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("Reset password controller error:", error);
 
     // Handle custom application errors
     if (isAppError(error)) {
