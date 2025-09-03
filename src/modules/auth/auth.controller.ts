@@ -1,6 +1,19 @@
 import { Request, Response } from "express";
-import { SignupRequest, LoginRequest, AcceptInviteRequest, ForgotPasswordRequest, ResetPasswordRequest } from "./validation/validation";
-import { signup, login, acceptInvite, requestPasswordReset, resetPassword } from "./auth.service";
+import {
+  SignupRequest,
+  LoginRequest,
+  AcceptInviteRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+} from "./validation/validation";
+import {
+  signup,
+  login,
+  acceptInvite,
+  requestPasswordReset,
+  resetPassword,
+  getCurrentUser,
+} from "./auth.service";
 import { COOKIE_OPTIONS } from "./middleware/auth.middleware";
 import { isAppError } from "../../utils/error/error";
 
@@ -21,16 +34,12 @@ export async function signupController(
     const result = await signup(validatedData);
 
     // Set secure HTTP-only cookie
-    res.cookie("sessiontoken", result.token, COOKIE_OPTIONS);
+    // res.cookie("sessiontoken", result.token, COOKIE_OPTIONS);
 
     // Send success response (without token in body for security)
     res.status(201).json({
       success: true,
       message: "User and organization created successfully",
-      data: {
-        user: result.user,
-        organization: result.organization,
-      },
     });
   } catch (error) {
     console.error("Signup controller error:", error);
@@ -105,24 +114,20 @@ export async function loginController(
 
 /**
  * GET /auth/me
- * Returns current user information from JWT token
+ * Returns current user information and organization from database
  * Requires authentication middleware
  */
 export async function meController(req: Request, res: Response): Promise<void> {
   try {
     // User information is populated by authentication middleware
-    const user = req.user!; // Non-null assertion since auth middleware validates this
+    const tokenUser = req.user!; // Non-null assertion since auth middleware validates this
+
+    // Get user and organization data from service
+    const result = await getCurrentUser(tokenUser.userId);
 
     res.status(200).json({
       success: true,
-      data: {
-        user: {
-          userId: user.userId,
-          email: user.email,
-          role: user.role,
-          orgId: user.orgId,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     console.error("Me controller error:", error);
@@ -266,7 +271,8 @@ export async function forgotPasswordController(
     // Even if there's an internal error, we don't want to reveal it
     res.status(200).json({
       success: true,
-      message: "If an account with this email exists, you will receive a password reset link.",
+      message:
+        "If an account with this email exists, you will receive a password reset link.",
     });
   }
 }
@@ -285,7 +291,10 @@ export async function resetPasswordController(
     const validatedData = req.validated.body as ResetPasswordRequest;
 
     // Reset password with token validation
-    const result = await resetPassword(validatedData.token, validatedData.newPassword);
+    const result = await resetPassword(
+      validatedData.token,
+      validatedData.newPassword
+    );
 
     res.status(200).json({
       success: result.success,

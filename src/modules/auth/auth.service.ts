@@ -75,6 +75,24 @@ export interface ResetPasswordResponse {
   message: string;
 }
 
+export interface GetCurrentUserResponse {
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+    role: string;
+    isActive: boolean;
+    createdAt: Date;
+  };
+  organization: {
+    id: string;
+    name: string;
+    industry: string | null;
+    createdAt: Date;
+  };
+}
+
 /**
  * Creates a new user and organization in a single transaction
  * The first user in an organization is automatically assigned ADMIN role
@@ -518,6 +536,72 @@ export async function resetPassword(
     // Handle unexpected errors
     throw new InternalServerError(
       "An unexpected error occurred while resetting password"
+    );
+  }
+}
+
+/**
+ * Gets current user information and organization from database
+ * Returns complete user profile and organization data
+ */
+export async function getCurrentUser(userId: string): Promise<GetCurrentUserResponse> {
+  try {
+    // Fetch full user and organization data from database
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            industry: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      },
+      organization: user.organization,
+    };
+  } catch (error) {
+    console.error("Get current user error:", error);
+
+    // Re-throw custom errors
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+
+    // Handle Prisma errors
+    if (error && typeof error === "object" && "code" in error) {
+      throw handlePrismaError(error);
+    }
+
+    // Handle unexpected errors
+    throw new InternalServerError(
+      "An unexpected error occurred while fetching user data"
     );
   }
 }
