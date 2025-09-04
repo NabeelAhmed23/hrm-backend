@@ -23,10 +23,9 @@ const employeeRouter = Router();
 
 // Validation middleware
 const validateCreateEmployee = validateRequest({ body: createEmployeeSchema });
-const validateUpdateEmployee = validateRequest({ body: updateEmployeeSchema });
-const validateInviteEmployee = validateRequest({ 
-  body: inviteEmployeeSchema, 
-  params: employeeIdSchema 
+const validateInviteEmployee = validateRequest({
+  body: inviteEmployeeSchema,
+  params: employeeIdSchema,
 });
 const validateEmployeeId = validateRequest({ params: employeeIdSchema });
 
@@ -43,9 +42,9 @@ const requireHROrAdmin = requireRole("HR", "ADMIN", "SUPERADMIN");
  */
 employeeRouter.post(
   "/",
-  authenticateToken,        // Verify JWT and populate req.user
-  requireHROrAdmin,         // Only HR and ADMIN can create employees
-  validateCreateEmployee,   // Validate request body
+  authenticateToken, // Verify JWT and populate req.user
+  requireHROrAdmin, // Only HR and ADMIN can create employees
+  validateCreateEmployee, // Validate request body
   createEmployeeController
 );
 
@@ -58,7 +57,7 @@ employeeRouter.post(
  */
 employeeRouter.get(
   "/",
-  authenticateToken,         // Verify JWT and populate req.user
+  authenticateToken, // Verify JWT and populate req.user
   getEmployeesController
 );
 
@@ -72,8 +71,8 @@ employeeRouter.get(
  */
 employeeRouter.get(
   "/:id",
-  authenticateToken,            // Verify JWT and populate req.user
-  validateEmployeeId,           // Validate employee ID parameter
+  authenticateToken, // Verify JWT and populate req.user
+  validateEmployeeId, // Validate employee ID parameter
   getEmployeeByIdController
 );
 
@@ -89,8 +88,8 @@ employeeRouter.get(
  */
 employeeRouter.put(
   "/:id",
-  authenticateToken,        // Verify JWT and populate req.user
-  requireHROrAdmin,         // Only HR and ADMIN can update employees
+  authenticateToken, // Verify JWT and populate req.user
+  requireHROrAdmin, // Only HR and ADMIN can update employees
   validateRequest({ body: updateEmployeeSchema, params: employeeIdSchema }), // Validate both body and params
   updateEmployeeController
 );
@@ -106,9 +105,9 @@ employeeRouter.put(
  */
 employeeRouter.delete(
   "/:id",
-  authenticateToken,        // Verify JWT and populate req.user
-  requireHROrAdmin,         // Only HR and ADMIN can delete employees
-  validateEmployeeId,       // Validate employee ID parameter
+  authenticateToken, // Verify JWT and populate req.user
+  requireHROrAdmin, // Only HR and ADMIN can delete employees
+  validateEmployeeId, // Validate employee ID parameter
   deleteEmployeeController
 );
 
@@ -123,9 +122,9 @@ employeeRouter.delete(
  */
 employeeRouter.post(
   "/:id/invite",
-  authenticateToken,        // Verify JWT and populate req.user
-  requireHROrAdmin,         // Only HR and ADMIN can invite employees
-  validateInviteEmployee,   // Validate request body
+  authenticateToken, // Verify JWT and populate req.user
+  requireHROrAdmin, // Only HR and ADMIN can invite employees
+  validateInviteEmployee, // Validate request body
   inviteEmployeeController
 );
 

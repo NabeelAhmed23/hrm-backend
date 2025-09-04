@@ -35,24 +35,28 @@ export const createEmployeeSchema = z.object({
     ),
   address: z
     .string()
-    .min(1, 'Address is required')
+    .min(1, 'Address cannot be empty')
     .max(200, 'Address cannot exceed 200 characters')
-    .trim(),
+    .trim()
+    .optional(),
   city: z
     .string()
-    .min(1, 'City is required')
+    .min(1, 'City cannot be empty')
     .max(50, 'City cannot exceed 50 characters')
-    .trim(),
+    .trim()
+    .optional(),
   state: z
     .string()
-    .min(1, 'State is required')
+    .min(1, 'State cannot be empty')
     .max(50, 'State cannot exceed 50 characters')
-    .trim(),
+    .trim()
+    .optional(),
   country: z
     .string()
-    .min(1, 'Country is required')
+    .min(1, 'Country cannot be empty')
     .max(50, 'Country cannot exceed 50 characters')
-    .trim(),
+    .trim()
+    .optional(),
 });
 
 /**
