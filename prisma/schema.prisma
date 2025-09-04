@@ -56,7 +56,8 @@ model User {
   sessions  Session[]
   employee  Employee? // If this user is also an employee in one org
   documents Document[] @relation("DocumentUploads") // Documents uploaded by this user
-  notifications Notification[] // Notifications for this user
+  notifications Notification[] // Direct notifications for this user
+  notificationReads NotificationRead[] // Track which notifications user has read
   passwordResetTokens PasswordResetToken[] // Password reset tokens for this user
 }
 
@@ -149,7 +150,6 @@ model Notification {
   message   String   // Notification content
   type      NotificationType // Notification category
   metadata  Json?    @db.JsonB // Optional structured data
-  isRead    Boolean  @default(false) // Read status
   createdAt DateTime @default(now())
 
   // Relationships
@@ -159,12 +159,31 @@ model Notification {
   userId String? // Nullable - if null, it's a broadcast to all org users
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Track who has read this notification
+  readBy NotificationRead[]
+
   // Indexes for performance
   @@index([organizationId])
   @@index([userId])
-  @@index([isRead])
   @@index([createdAt])
   @@index([type])
+}
+
+// Separate model to track who has read each notification
+model NotificationRead {
+  id             String      @id @default(uuid())
+  notificationId String
+  userId         String
+  readAt         DateTime    @default(now())
+  
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Prevent duplicate read records for same user/notification
+  @@unique([notificationId, userId])
+  @@index([notificationId])
+  @@index([userId])
+  @@index([readAt])
 }
 
 model PasswordResetToken {

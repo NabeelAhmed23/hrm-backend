@@ -13,13 +13,13 @@ import { Role } from "../../../generated/prisma";
 /**
  * POST /notifications
  * Creates a new notification
- * 
+ *
  * Features:
  * - Role-based authorization (HR/ADMIN only)
  * - User-specific or broadcast notifications
  * - JSON metadata support
  * - Organization boundary enforcement
- * 
+ *
  * Requires HR or ADMIN role
  */
 export async function createNotificationController(
@@ -75,14 +75,14 @@ export async function createNotificationController(
 /**
  * GET /notifications
  * Lists notifications for the authenticated user
- * 
+ *
  * Features:
  * - Pagination support
  * - Filter by unread, type, and date
  * - Organization boundary enforcement
  * - Unread count for UI badges
  * - Ordered by unread first, then newest
- * 
+ *
  * Query parameters: page, limit, unreadOnly, since, type
  */
 export async function listNotificationsController(
@@ -141,12 +141,12 @@ export async function listNotificationsController(
 /**
  * PUT /notifications/:id/read
  * Marks a notification as read
- * 
+ *
  * Features:
  * - User authorization (can only mark own notifications)
  * - Organization boundary enforcement
  * - Idempotent operation (no error if already read)
- * 
+ *
  * Requires authentication
  */
 export async function markNotificationAsReadController(
@@ -199,12 +199,12 @@ export async function markNotificationAsReadController(
 /**
  * DELETE /notifications/:id
  * Deletes/dismisses a notification
- * 
+ *
  * Features:
  * - User authorization (can only delete own notifications)
  * - Organization boundary enforcement
  * - Permanent deletion (user dismissed notification)
- * 
+ *
  * Requires authentication
  */
 export async function deleteNotificationController(
@@ -257,12 +257,12 @@ export async function deleteNotificationController(
 /**
  * PUT /notifications/mark-all-read
  * Marks all notifications as read for the authenticated user
- * 
+ *
  * Features:
  * - Bulk operation for better UX
  * - Organization boundary enforcement
  * - Returns count of notifications marked
- * 
+ *
  * Requires authentication
  */
 export async function markAllNotificationsAsReadController(
@@ -310,12 +310,12 @@ export async function markAllNotificationsAsReadController(
 /**
  * GET /notifications/polling
  * Polling endpoint for real-time notifications
- * 
+ *
  * Features:
  * - Timestamp-based polling
  * - Efficient incremental updates
  * - Fallback for WebSocket/SSE
- * 
+ *
  * Query parameters: since (required), limit
  * Returns notifications created after the 'since' timestamp
  */
@@ -378,13 +378,13 @@ export async function pollingNotificationsController(
 /**
  * GET /notifications/stats
  * Get notification statistics for organization (ADMIN/HR only)
- * 
+ *
  * Features:
  * - Organization-wide statistics
  * - Breakdown by notification type
  * - Recent activity metrics
  * - Admin dashboard support
- * 
+ *
  * Requires HR or ADMIN role
  */
 export async function getNotificationStatsController(
@@ -397,7 +397,7 @@ export async function getNotificationStatsController(
     const { orgId, role } = user;
 
     // Authorization: Only HR and ADMIN can view org stats
-    if (!['HR', 'ADMIN', 'SUPERADMIN'].includes(role)) {
+    if (!["HR", "ADMIN", "SUPERADMIN"].includes(role)) {
       res.status(403).json({
         success: false,
         message: "Only HR and ADMIN users can view notification statistics",
@@ -406,7 +406,9 @@ export async function getNotificationStatsController(
     }
 
     // Get organization statistics
-    const stats = await notificationService.getOrganizationNotificationStats(orgId);
+    const stats = await notificationService.getOrganizationNotificationStats(
+      orgId
+    );
 
     // Send success response
     res.status(200).json({
@@ -439,13 +441,13 @@ export async function getNotificationStatsController(
 /**
  * GET /notifications/stream
  * Server-Sent Events endpoint for real-time notifications
- * 
+ *
  * Features:
  * - Real-time notification delivery
  * - Connection health monitoring
  * - Automatic reconnection support
  * - Organization isolation
- * 
+ *
  * Requires authentication
  * Returns SSE stream with notification events
  */
@@ -465,11 +467,12 @@ export function notificationStreamController(
       res
     );
 
-    console.log(`📱 SSE connection established: ${connectionId} for user ${userId}`);
+    console.log(
+      `📱 SSE connection established: ${connectionId} for user ${userId}`
+    );
 
     // The connection is now managed by the realtime service
     // Response will be handled by SSE events
-
   } catch (error) {
     console.error("❌ Notification stream controller error:", error);
 

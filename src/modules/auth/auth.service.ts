@@ -9,6 +9,8 @@ import {
 import { signJWT, JWTPayload } from "../../utils/jwt/jwt.utils";
 import prisma from "../../utils/config/db";
 import { emailService } from "../../services/emailService";
+import { notificationService } from "../../services/notificationService";
+import { notificationRealtimeService } from "../../services/notificationRealtimeService";
 import {
   ConflictError,
   AuthenticationError,
@@ -332,6 +334,38 @@ export async function acceptInvite(
 
     // Sign JWT token
     const jwtToken = signJWT(jwtPayload);
+    
+    // Send organization-wide notification about new team member
+    try {
+      const notificationResult = await notificationService.createNotification(
+        updatedUser.organizationId,
+        "SUPERADMIN", // System-generated notification
+        {
+          title: "New Team Member Joined",
+          message: `${updatedUser.firstName} ${updatedUser.lastName || ""} has joined your organization`,
+          type: "INFO",
+          metadata: {
+            newUserId: updatedUser.id,
+            newUserName: `${updatedUser.firstName} ${updatedUser.lastName || ""}`,
+            newUserEmail: updatedUser.email,
+            joinedAt: new Date().toISOString(),
+          },
+          // userId not specified = broadcast to all org users
+        }
+      );
+
+      // Send real-time notification to all users in organization
+      if (notificationResult.success && notificationResult.notifications) {
+        const notification = notificationResult.notifications[0];
+        notificationRealtimeService.broadcastToOrganization(
+          updatedUser.organizationId,
+          notification
+        );
+      }
+    } catch (notificationError) {
+      // Log error but don't fail the invite acceptance
+      console.error("Failed to send join notification:", notificationError);
+    }
 
     // Return response
     return {

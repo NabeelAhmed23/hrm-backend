@@ -1,11 +1,11 @@
-import prisma from '../utils/config/db';
-import { 
-  NotFoundError, 
-  AuthorizationError, 
+import prisma from "../utils/config/db";
+import {
+  NotFoundError,
+  AuthorizationError,
   ValidationError,
-  InternalServerError 
-} from '../utils/error/error';
-import { NotificationType, Role } from '../../generated/prisma';
+  InternalServerError,
+} from "../utils/error/error";
+import { NotificationType, Role } from "../../generated/prisma";
 
 // Service interfaces
 export interface CreateNotificationRequest {
@@ -41,7 +41,7 @@ export interface ListNotificationsResponse {
 
 /**
  * In-App Notification Service
- * 
+ *
  * Manages user notifications within organizations with features:
  * - Role-based notification creation (HR/ADMIN only)
  * - User-specific and broadcast notifications
@@ -51,33 +51,34 @@ export interface ListNotificationsResponse {
  * - Pagination and filtering
  */
 export class NotificationService {
-  
   /**
    * Create a notification for a user or broadcast to all org users
-   * 
+   *
    * @param organizationId - Organization ID (from authenticated user)
    * @param creatorRole - Role of user creating notification (must be HR/ADMIN)
    * @param data - Notification content and metadata
-   * @returns Created notification(s) details
+   * @returns Created notification details
    */
   async createNotification(
     organizationId: string,
     creatorRole: Role,
     data: CreateNotificationRequest
-  ): Promise<{ 
-    success: boolean; 
-    message: string; 
+  ): Promise<{
+    success: boolean;
+    message: string;
     notificationsCreated: number;
     notifications?: NotificationResponse[];
   }> {
     // Authorization: Only HR and ADMIN can create notifications
-    if (!['HR', 'ADMIN', 'SUPERADMIN'].includes(creatorRole)) {
-      throw new AuthorizationError('Only HR and ADMIN users can create notifications');
+    if (!["HR", "ADMIN", "SUPERADMIN"].includes(creatorRole)) {
+      throw new AuthorizationError(
+        "Only HR and ADMIN users can create notifications"
+      );
     }
 
     // Validate metadata if provided
-    if (data.metadata && typeof data.metadata !== 'object') {
-      throw new ValidationError('Metadata must be a valid JSON object');
+    if (data.metadata && typeof data.metadata !== "object") {
+      throw new ValidationError("Metadata must be a valid JSON object");
     }
 
     try {
@@ -85,19 +86,21 @@ export class NotificationService {
 
       if (userId) {
         // User-specific notification
-        
+
         // Verify user exists and belongs to the same organization
         const targetUser = await prisma.user.findUnique({
           where: { id: userId },
-          select: { id: true, organizationId: true, firstName: true }
+          select: { id: true, organizationId: true, firstName: true },
         });
 
         if (!targetUser) {
-          throw new NotFoundError('Target user not found');
+          throw new NotFoundError("Target user not found");
         }
 
         if (targetUser.organizationId !== organizationId) {
-          throw new AuthorizationError('Cannot send notifications to users in other organizations');
+          throw new AuthorizationError(
+            "Cannot send notifications to users in other organizations"
+          );
         }
 
         // Create single notification
@@ -116,68 +119,65 @@ export class NotificationService {
           success: true,
           message: `Notification sent to ${targetUser.firstName}`,
           notificationsCreated: 1,
-          notifications: [this.formatNotificationResponse(notification)],
+          notifications: [this.formatNotificationResponse(notification, false)],
         };
-
       } else {
         // Broadcast notification to all users in organization
-        
-        // Get all active users in the organization
-        const orgUsers = await prisma.user.findMany({
+
+        // Get count of active users in the organization
+        const activeUserCount = await prisma.user.count({
           where: {
             organizationId,
             isActive: true,
           },
-          select: { id: true, firstName: true }
         });
 
-        if (orgUsers.length === 0) {
-          throw new ValidationError('No active users found in organization to notify');
+        if (activeUserCount === 0) {
+          throw new ValidationError(
+            "No active users found in organization to notify"
+          );
         }
 
-        // Create notification for each user in a transaction
-        const notifications = await prisma.$transaction(
-          orgUsers.map(user => 
-            prisma.notification.create({
-              data: {
-                title,
-                message,
-                type,
-                metadata: metadata || undefined,
-                organizationId,
-                userId: user.id,
-              },
-            })
-          )
-        );
+        // Create single broadcast notification (userId = null)
+        const notification = await prisma.notification.create({
+          data: {
+            title,
+            message,
+            type,
+            metadata: metadata || undefined,
+            organizationId,
+            userId: null, // Broadcast notification
+          },
+        });
 
         return {
           success: true,
-          message: `Broadcast notification sent to ${orgUsers.length} users`,
-          notificationsCreated: notifications.length,
-          notifications: notifications.map(n => this.formatNotificationResponse(n)),
+          message: `Broadcast notification created for ${activeUserCount} users`,
+          notificationsCreated: 1,
+          notifications: [this.formatNotificationResponse(notification, false)],
         };
       }
-
     } catch (error) {
-      console.error('❌ Create notification error:', error);
-      
+      console.error("❌ Create notification error:", error);
+
       // Re-throw known errors
-      if (error instanceof NotFoundError || 
-          error instanceof AuthorizationError ||
-          error instanceof ValidationError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof AuthorizationError ||
+        error instanceof ValidationError
+      ) {
         throw error;
       }
-      
-      throw new InternalServerError('Failed to create notification');
+
+      throw new InternalServerError("Failed to create notification");
     }
   }
 
   /**
    * List notifications for a user with pagination and filtering
-   * 
+   *
    * @param userId - User ID requesting notifications
-   * @param organizationId - User's organization ID  
+   * @param organizationId - User's organization ID
    * @param options - Pagination and filter options
    * @returns Paginated list of notifications
    */
@@ -196,15 +196,14 @@ export class NotificationService {
     const skip = (page - 1) * limit;
 
     try {
-      // Build where clause
+      // Build where clause for notifications the user can see
       const where: any = {
-        userId,
+        OR: [
+          { userId }, // Direct notifications to this user
+          { userId: null }, // Broadcast notifications
+        ],
         organizationId,
       };
-
-      if (unreadOnly) {
-        where.isRead = false;
-      }
 
       if (since) {
         where.createdAt = { gte: since };
@@ -214,33 +213,58 @@ export class NotificationService {
         where.type = type;
       }
 
-      // Get total count for pagination
-      const total = await prisma.notification.count({ where });
-
-      // Get notifications with pagination (unread first, then by newest)
+      // Get notifications with read status for this user
       const notifications = await prisma.notification.findMany({
         where,
+        include: {
+          readBy: {
+            where: { userId },
+            select: { readAt: true },
+          },
+        },
         orderBy: [
-          { isRead: 'asc' },  // Unread first
-          { createdAt: 'desc' } // Most recent first
+          { createdAt: "desc" }, // Most recent first
         ],
         skip,
         take: limit,
       });
 
+      // Filter by read status if needed and format response
+      let filteredNotifications = notifications.map((n) => ({
+        ...n,
+        isRead: n.readBy.length > 0, // User has read this notification
+        readAt: n.readBy[0]?.readAt || null,
+      }));
+
+      if (unreadOnly) {
+        filteredNotifications = filteredNotifications.filter((n) => !n.isRead);
+      }
+
+      // Get total count for pagination
+      const total = await prisma.notification.count({ where });
+
       // Get unread count for UI badges
-      const unreadCount = await prisma.notification.count({
+      const allNotifications = await prisma.notification.findMany({
         where: {
-          userId,
+          OR: [{ userId }, { userId: null }],
           organizationId,
-          isRead: false,
+        },
+        include: {
+          readBy: {
+            where: { userId },
+            select: { id: true },
+          },
         },
       });
+
+      const unreadCount = allNotifications.filter((n) => n.readBy.length === 0).length;
 
       const totalPages = Math.ceil(total / limit);
 
       return {
-        notifications: notifications.map(n => this.formatNotificationResponse(n)),
+        notifications: filteredNotifications.map((n) =>
+          this.formatNotificationResponse(n, n.isRead)
+        ),
         pagination: {
           total,
           page,
@@ -249,16 +273,15 @@ export class NotificationService {
         },
         unreadCount,
       };
-
     } catch (error) {
-      console.error('❌ List notifications error:', error);
-      throw new InternalServerError('Failed to retrieve notifications');
+      console.error("❌ List notifications error:", error);
+      throw new InternalServerError("Failed to retrieve notifications");
     }
   }
 
   /**
    * Mark a notification as read
-   * 
+   *
    * @param notificationId - Notification ID to mark as read
    * @param userId - User ID (for authorization)
    * @param organizationId - Organization ID (for authorization)
@@ -270,57 +293,78 @@ export class NotificationService {
     organizationId: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      // Find and verify notification belongs to user
+      // Find and verify notification exists and user can access it
       const notification = await prisma.notification.findUnique({
         where: { id: notificationId },
-        select: { id: true, userId: true, organizationId: true, isRead: true }
+        select: { 
+          id: true, 
+          userId: true, 
+          organizationId: true,
+          readBy: {
+            where: { userId },
+            select: { id: true }
+          }
+        },
       });
 
       if (!notification) {
-        throw new NotFoundError('Notification not found');
+        throw new NotFoundError("Notification not found");
       }
 
-      // Authorization checks
-      if (notification.userId !== userId) {
-        throw new AuthorizationError('You can only mark your own notifications as read');
+      // Authorization checks - user can read if notification is for them OR it's a broadcast
+      const canAccess = 
+        notification.userId === userId || // Direct notification to user
+        notification.userId === null; // Broadcast notification
+
+      if (!canAccess) {
+        throw new AuthorizationError(
+          "You can only mark notifications intended for you as read"
+        );
       }
 
       if (notification.organizationId !== organizationId) {
-        throw new AuthorizationError('Notification does not belong to your organization');
+        throw new AuthorizationError(
+          "Notification does not belong to your organization"
+        );
       }
 
-      if (notification.isRead) {
+      // Check if already marked as read
+      if (notification.readBy.length > 0) {
         return {
           success: true,
-          message: 'Notification was already marked as read',
+          message: "Notification was already marked as read",
         };
       }
 
-      // Mark as read
-      await prisma.notification.update({
-        where: { id: notificationId },
-        data: { isRead: true },
+      // Create read record
+      await prisma.notificationRead.create({
+        data: {
+          notificationId,
+          userId,
+        },
       });
 
       return {
         success: true,
-        message: 'Notification marked as read',
+        message: "Notification marked as read",
       };
-
     } catch (error) {
-      console.error('❌ Mark notification as read error:', error);
-      
-      if (error instanceof NotFoundError || error instanceof AuthorizationError) {
+      console.error("❌ Mark notification as read error:", error);
+
+      if (
+        error instanceof NotFoundError ||
+        error instanceof AuthorizationError
+      ) {
         throw error;
       }
-      
-      throw new InternalServerError('Failed to mark notification as read');
+
+      throw new InternalServerError("Failed to mark notification as read");
     }
   }
 
   /**
    * Delete a notification (user can dismiss their own notifications)
-   * 
+   *
    * @param notificationId - Notification ID to delete
    * @param userId - User ID (for authorization)
    * @param organizationId - Organization ID (for authorization)
@@ -335,20 +379,24 @@ export class NotificationService {
       // Find and verify notification belongs to user
       const notification = await prisma.notification.findUnique({
         where: { id: notificationId },
-        select: { id: true, userId: true, organizationId: true, title: true }
+        select: { id: true, userId: true, organizationId: true, title: true },
       });
 
       if (!notification) {
-        throw new NotFoundError('Notification not found');
+        throw new NotFoundError("Notification not found");
       }
 
       // Authorization checks
       if (notification.userId !== userId) {
-        throw new AuthorizationError('You can only delete your own notifications');
+        throw new AuthorizationError(
+          "You can only delete your own notifications"
+        );
       }
 
       if (notification.organizationId !== organizationId) {
-        throw new AuthorizationError('Notification does not belong to your organization');
+        throw new AuthorizationError(
+          "Notification does not belong to your organization"
+        );
       }
 
       // Delete notification
@@ -358,17 +406,19 @@ export class NotificationService {
 
       return {
         success: true,
-        message: 'Notification deleted successfully',
+        message: "Notification deleted successfully",
       };
-
     } catch (error) {
-      console.error('❌ Delete notification error:', error);
-      
-      if (error instanceof NotFoundError || error instanceof AuthorizationError) {
+      console.error("❌ Delete notification error:", error);
+
+      if (
+        error instanceof NotFoundError ||
+        error instanceof AuthorizationError
+      ) {
         throw error;
       }
-      
-      throw new InternalServerError('Failed to delete notification');
+
+      throw new InternalServerError("Failed to delete notification");
     }
   }
 
@@ -385,32 +435,60 @@ export class NotificationService {
     try {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      const [total, unread, byType, recent] = await Promise.all([
+      const [total, byType, recent] = await Promise.all([
         // Total notifications
         prisma.notification.count({
-          where: { organizationId }
+          where: { organizationId },
         }),
-        
-        // Unread notifications
-        prisma.notification.count({
-          where: { organizationId, isRead: false }
-        }),
-        
+
         // Notifications by type
         prisma.notification.groupBy({
-          by: ['type'],
+          by: ["type"],
           where: { organizationId },
-          _count: { type: true }
+          _count: { type: true },
         }),
-        
+
         // Recent activity (24h)
         prisma.notification.count({
-          where: { 
+          where: {
             organizationId,
-            createdAt: { gte: oneDayAgo }
-          }
-        })
+            createdAt: { gte: oneDayAgo },
+          },
+        }),
       ]);
+
+      // Calculate unread notifications across all users in organization
+      // This is more complex with the new read tracking system
+      const orgUsers = await prisma.user.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true },
+      });
+
+      const notifications = await prisma.notification.findMany({
+        where: { organizationId },
+        include: {
+          readBy: {
+            where: {
+              userId: { in: orgUsers.map(u => u.id) }
+            }
+          }
+        }
+      });
+
+      // Count total unread instances (notification × users who haven't read it)
+      let totalUnreadInstances = 0;
+      notifications.forEach(notification => {
+        if (notification.userId) {
+          // Direct notification - check if target user has read it
+          const hasRead = notification.readBy.some(read => read.userId === notification.userId);
+          if (!hasRead) totalUnreadInstances += 1;
+        } else {
+          // Broadcast notification - count users who haven't read it
+          const readUserIds = new Set(notification.readBy.map(read => read.userId));
+          const unreadCount = orgUsers.filter(user => !readUserIds.has(user.id)).length;
+          totalUnreadInstances += unreadCount;
+        }
+      });
 
       // Format type counts
       const notificationsByType: Record<NotificationType, number> = {
@@ -421,20 +499,21 @@ export class NotificationService {
         INFO: 0,
       };
 
-      byType.forEach(item => {
+      byType.forEach((item) => {
         notificationsByType[item.type] = item._count.type;
       });
 
       return {
         totalNotifications: total,
-        unreadNotifications: unread,
+        unreadNotifications: totalUnreadInstances,
         notificationsByType,
         recentActivity: recent,
       };
-
     } catch (error) {
-      console.error('❌ Get notification stats error:', error);
-      throw new InternalServerError('Failed to retrieve notification statistics');
+      console.error("❌ Get notification stats error:", error);
+      throw new InternalServerError(
+        "Failed to retrieve notification statistics"
+      );
     }
   }
 
@@ -446,38 +525,63 @@ export class NotificationService {
     organizationId: string
   ): Promise<{ success: boolean; message: string; markedCount: number }> {
     try {
-      const result = await prisma.notification.updateMany({
+      // Get all unread notifications for this user (direct + broadcasts)
+      const unreadNotifications = await prisma.notification.findMany({
         where: {
-          userId,
+          OR: [
+            { userId }, // Direct notifications
+            { userId: null }, // Broadcast notifications
+          ],
           organizationId,
-          isRead: false,
         },
-        data: { isRead: true },
+        include: {
+          readBy: {
+            where: { userId },
+            select: { id: true },
+          },
+        },
       });
+
+      // Filter to only unread notifications
+      const actuallyUnread = unreadNotifications.filter(
+        (n) => n.readBy.length === 0
+      );
+
+      // Create read records for all unread notifications
+      const readRecords = actuallyUnread.map((n) => ({
+        notificationId: n.id,
+        userId,
+      }));
+
+      if (readRecords.length > 0) {
+        await prisma.notificationRead.createMany({
+          data: readRecords,
+          skipDuplicates: true, // In case of race conditions
+        });
+      }
 
       return {
         success: true,
-        message: `Marked ${result.count} notifications as read`,
-        markedCount: result.count,
+        message: `Marked ${readRecords.length} notifications as read`,
+        markedCount: readRecords.length,
       };
-
     } catch (error) {
-      console.error('❌ Mark all as read error:', error);
-      throw new InternalServerError('Failed to mark all notifications as read');
+      console.error("❌ Mark all as read error:", error);
+      throw new InternalServerError("Failed to mark all notifications as read");
     }
   }
 
   /**
    * Format notification for API response
    */
-  private formatNotificationResponse(notification: any): NotificationResponse {
+  private formatNotificationResponse(notification: any, isRead: boolean): NotificationResponse {
     return {
       id: notification.id,
       title: notification.title,
       message: notification.message,
       type: notification.type,
       metadata: notification.metadata,
-      isRead: notification.isRead,
+      isRead: isRead,
       createdAt: notification.createdAt,
       organizationId: notification.organizationId,
       userId: notification.userId,
