@@ -1,9 +1,9 @@
 /**
  * Document Expiry Job
- * 
+ *
  * Cron job that runs daily to check for documents expiring soon.
  * Sends notifications and emails to relevant users and HR/ADMIN staff.
- * 
+ *
  * Features:
  * - Daily cron execution
  * - Configurable expiry warning periods
@@ -13,16 +13,16 @@
  * - Employee and admin notifications
  */
 
-import * as cron from 'node-cron';
-import prisma from '../utils/config/db';
-import { notificationService } from '../services/notificationService';
-import { emailService } from '../services/emailService';
-import { NotificationType } from '../../generated/prisma';
+import * as cron from "node-cron";
+import prisma from "../utils/config/db";
+import { notificationService } from "../services/notificationService";
+import { emailService } from "../services/emailService";
+import { NotificationType } from "../../generated/prisma";
 
 export interface ExpiryJobConfig {
-  warningDays: number[];        // Days ahead to warn (e.g., [30, 14, 7, 1])
-  cronSchedule: string;         // Cron schedule (default: daily at 9 AM)
-  enabled: boolean;             // Enable/disable job
+  warningDays: number[]; // Days ahead to warn (e.g., [30, 14, 7, 1])
+  cronSchedule: string; // Cron schedule (default: daily at 9 AM)
+  enabled: boolean; // Enable/disable job
 }
 
 /**
@@ -34,9 +34,10 @@ export class DocumentExpiryJob {
 
   constructor(config?: Partial<ExpiryJobConfig>) {
     this.config = {
-      warningDays: [30, 14, 7, 1],        // Default warning periods
-      cronSchedule: '0 9 * * *',          // Daily at 9:00 AM
-      enabled: process.env.NODE_ENV !== 'test', // Disable in tests
+      warningDays: [30, 14, 7, 1], // Default warning periods
+      // cronSchedule: '0 9 * * *',          // Daily at 9:00 AM
+      cronSchedule: "0 0 3 * * * *", // Daily at 9:00 AM
+      enabled: process.env.NODE_ENV !== "test", // Disable in tests
       ...config,
     };
   }
@@ -46,12 +47,12 @@ export class DocumentExpiryJob {
    */
   start(): void {
     if (!this.config.enabled) {
-      console.log('📅 Document expiry job is disabled');
+      console.log("📅 Document expiry job is disabled");
       return;
     }
 
     if (this.cronJob && this.cronJob.running) {
-      console.log('📅 Document expiry job is already running');
+      console.log("📅 Document expiry job is already running");
       return;
     }
 
@@ -61,12 +62,16 @@ export class DocumentExpiryJob {
         await this.executeJob();
       },
       {
-        timezone: process.env.TZ || 'UTC',
+        timezone: process.env.TZ || "UTC",
       }
     );
 
-    console.log(`📅 Document expiry job started (schedule: ${this.config.cronSchedule})`);
-    console.log(`📅 Warning periods: ${this.config.warningDays.join(', ')} days`);
+    console.log(
+      `📅 Document expiry job started (schedule: ${this.config.cronSchedule})`
+    );
+    console.log(
+      `📅 Warning periods: ${this.config.warningDays.join(", ")} days`
+    );
   }
 
   /**
@@ -76,7 +81,7 @@ export class DocumentExpiryJob {
     if (this.cronJob) {
       this.cronJob.stop();
       this.cronJob = null;
-      console.log('📅 Document expiry job stopped');
+      console.log("📅 Document expiry job stopped");
     }
   }
 
@@ -84,7 +89,7 @@ export class DocumentExpiryJob {
    * Execute the job manually (for testing or manual runs)
    */
   async runOnce(): Promise<void> {
-    console.log('📅 Running document expiry job manually...');
+    console.log("📅 Running document expiry job manually...");
     await this.executeJob();
   }
 
@@ -92,8 +97,8 @@ export class DocumentExpiryJob {
    * Main job execution logic
    */
   private async executeJob(): Promise<void> {
-    console.log('📅 Starting document expiry check job...');
-    
+    console.log("📅 Starting document expiry check job...");
+
     const startTime = Date.now();
     let totalNotifications = 0;
     let totalEmails = 0;
@@ -106,7 +111,7 @@ export class DocumentExpiryJob {
         select: {
           id: true,
           name: true,
-        }
+        },
       });
 
       console.log(`📅 Processing ${organizations.length} organizations...`);
@@ -118,7 +123,6 @@ export class DocumentExpiryJob {
           totalNotifications += orgStats.notifications;
           totalEmails += orgStats.emails;
           processedOrganizations++;
-
         } catch (error) {
           console.error(`❌ Error processing organization ${org.name}:`, error);
           errors++;
@@ -126,16 +130,17 @@ export class DocumentExpiryJob {
       }
 
       const duration = Date.now() - startTime;
-      
+
       console.log(`📅 Document expiry job completed:`);
       console.log(`   Duration: ${duration}ms`);
-      console.log(`   Organizations: ${processedOrganizations}/${organizations.length}`);
+      console.log(
+        `   Organizations: ${processedOrganizations}/${organizations.length}`
+      );
       console.log(`   Notifications sent: ${totalNotifications}`);
       console.log(`   Emails sent: ${totalEmails}`);
       console.log(`   Errors: ${errors}`);
-
     } catch (error) {
-      console.error('❌ Document expiry job failed:', error);
+      console.error("❌ Document expiry job failed:", error);
     }
   }
 
@@ -143,12 +148,11 @@ export class DocumentExpiryJob {
    * Process expiry checks for a single organization
    */
   private async processOrganization(
-    organizationId: string, 
+    organizationId: string,
     organizationName: string
   ): Promise<{ notifications: number; emails: number }> {
-    
     console.log(`📅 Processing organization: ${organizationName}`);
-    
+
     let notificationCount = 0;
     let emailCount = 0;
 
@@ -157,7 +161,7 @@ export class DocumentExpiryJob {
       try {
         // Get documents expiring in exactly this many days
         const expiringDocuments = await this.getDocumentsExpiringIn(
-          organizationId, 
+          organizationId,
           warningDays
         );
 
@@ -165,7 +169,9 @@ export class DocumentExpiryJob {
           continue;
         }
 
-        console.log(`📄 Found ${expiringDocuments.length} documents expiring in ${warningDays} days`);
+        console.log(
+          `📄 Found ${expiringDocuments.length} documents expiring in ${warningDays} days`
+        );
 
         // Process each expiring document
         for (const document of expiringDocuments) {
@@ -176,15 +182,16 @@ export class DocumentExpiryJob {
               warningDays,
               organizationId
             );
-            
+
             notificationCount += docStats.notifications;
             emailCount += docStats.emails;
-
           } catch (error) {
-            console.error(`❌ Error processing document ${document.title}:`, error);
+            console.error(
+              `❌ Error processing document ${document.title}:`,
+              error
+            );
           }
         }
-
       } catch (error) {
         console.error(`❌ Error processing ${warningDays}-day warning:`, error);
       }
@@ -203,13 +210,13 @@ export class DocumentExpiryJob {
     organizationId: string,
     daysAhead: number
   ): Promise<any[]> {
-    
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysAhead);
     targetDate.setHours(0, 0, 0, 0); // Start of day
-    
+
     const nextDay = new Date(targetDate);
     nextDay.setDate(nextDay.getDate() + 1); // End of target day
+    nextDay.setHours(23, 59, 59, 59);
 
     const documents = await prisma.document.findMany({
       where: {
@@ -218,26 +225,25 @@ export class DocumentExpiryJob {
         expiresAt: {
           gte: targetDate,
           lt: nextDay,
-        }
+        },
       },
       include: {
         uploadedBy: {
-          select: { id: true, firstName: true, lastName: true, email: true }
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         employee: {
-          select: { 
-            id: true, 
-            firstName: true, 
-            lastName: true, 
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
             email: true,
             user: {
-              select: { id: true, firstName: true, email: true }
-            }
-          }
-        }
-      }
+              select: { id: true, firstName: true, email: true },
+            },
+          },
+        },
+      },
     });
-
     return documents;
   }
 
@@ -249,7 +255,6 @@ export class DocumentExpiryJob {
     warningDays: number,
     organizationId: string
   ): Promise<{ notifications: number; emails: number }> {
-    
     let notifications = 0;
     let emails = 0;
 
@@ -263,11 +268,13 @@ export class DocumentExpiryJob {
         try {
           // Create in-app notification
           const notificationTitle = `Document Expiring ${urgency}`;
-          const notificationMessage = `Your ${document.type.toLowerCase()} "${document.title}" expires on ${expiryDate}. Please review and take necessary action.`;
-          
+          const notificationMessage = `Your ${document.type.toLowerCase()} "${
+            document.title
+          }" expires on ${expiryDate}. Please review and take necessary action.`;
+
           await notificationService.createNotification(
             organizationId,
-            'HR', // Create as HR for permission purposes
+            "HR", // Create as HR for permission purposes
             {
               title: notificationTitle,
               message: notificationMessage,
@@ -280,7 +287,7 @@ export class DocumentExpiryJob {
                 expiresAt: document.expiresAt,
                 warningDays,
                 urgency,
-              }
+              },
             }
           );
           notifications++;
@@ -289,24 +296,23 @@ export class DocumentExpiryJob {
           if (document.employee.user?.email) {
             try {
               const emailMessage = `${notificationMessage}\n\nDocument: ${document.title}\nType: ${document.type}\nExpires: ${expiryDate}\n\nPlease log into your account to view the document.`;
-              
+
               await emailService.sendComplianceReminder(
                 document.employee.user.email,
                 emailMessage,
                 {
-                  firstName: document.employee.firstName || 'Employee',
+                  firstName: document.employee.firstName || "Employee",
                   message: emailMessage,
-                  organizationName: 'Your Organization',
+                  organizationName: "Your Organization",
                 }
               );
               emails++;
             } catch (emailError) {
-              console.error('❌ Failed to send email to employee:', emailError);
+              console.error("❌ Failed to send email to employee:", emailError);
             }
           }
-
         } catch (error) {
-          console.error('❌ Error notifying employee:', error);
+          console.error("❌ Error notifying employee:", error);
         }
       }
 
@@ -317,65 +323,80 @@ export class DocumentExpiryJob {
           const adminUsers = await prisma.user.findMany({
             where: {
               organizationId,
-              role: { in: ['HR', 'ADMIN', 'SUPERADMIN'] },
+              role: { in: ["HR", "ADMIN", "SUPERADMIN"] },
               isActive: true,
             },
-            select: { id: true, firstName: true, email: true }
+            select: { id: true, firstName: true, email: true },
           });
 
           for (const adminUser of adminUsers) {
             // Create in-app notification for admin
             const adminNotificationTitle = `Document Expiring ${urgency} - Action Required`;
-            const adminNotificationMessage = `${document.type} "${document.title}"${document.employee ? ` (assigned to ${document.employee.firstName} ${document.employee.lastName})` : ''} expires on ${expiryDate}.`;
-            
-            await notificationService.createNotification(
-              organizationId,
-              'HR',
-              {
-                title: adminNotificationTitle,
-                message: adminNotificationMessage,
-                type: NotificationType.ALERT,
-                userId: adminUser.id,
-                metadata: {
-                  documentId: document.id,
-                  documentTitle: document.title,
-                  documentType: document.type,
-                  expiresAt: document.expiresAt,
-                  employeeId: document.employee?.id,
-                  employeeName: document.employee ? `${document.employee.firstName} ${document.employee.lastName}` : null,
-                  warningDays,
-                  urgency,
-                }
-              }
-            );
+            const adminNotificationMessage = `${document.type} "${
+              document.title
+            }"${
+              document.employee
+                ? ` (assigned to ${document.employee.firstName} ${document.employee.lastName})`
+                : ""
+            } expires on ${expiryDate}.`;
+
+            await notificationService.createNotification(organizationId, "HR", {
+              title: adminNotificationTitle,
+              message: adminNotificationMessage,
+              type: NotificationType.ALERT,
+              userId: adminUser.id,
+              metadata: {
+                documentId: document.id,
+                documentTitle: document.title,
+                documentType: document.type,
+                expiresAt: document.expiresAt,
+                employeeId: document.employee?.id,
+                employeeName: document.employee
+                  ? `${document.employee.firstName} ${document.employee.lastName}`
+                  : null,
+                warningDays,
+                urgency,
+              },
+            });
             notifications++;
 
             // Send email to admin
             try {
-              const emailMessage = `${adminNotificationMessage}\n\nDocument Details:\n- Title: ${document.title}\n- Type: ${document.type}\n- Expires: ${expiryDate}\n- Uploaded by: ${document.uploadedBy.firstName} ${document.uploadedBy.lastName}\n${document.employee ? `- Assigned to: ${document.employee.firstName} ${document.employee.lastName}` : ''}\n\nPlease review and take appropriate action.`;
-              
+              const emailMessage = `${adminNotificationMessage}\n\nDocument Details:\n- Title: ${
+                document.title
+              }\n- Type: ${
+                document.type
+              }\n- Expires: ${expiryDate}\n- Uploaded by: ${
+                document.uploadedBy.firstName
+              } ${document.uploadedBy.lastName}\n${
+                document.employee
+                  ? `- Assigned to: ${document.employee.firstName} ${document.employee.lastName}`
+                  : ""
+              }\n\nPlease review and take appropriate action.`;
+
               await emailService.sendComplianceReminder(
                 adminUser.email,
                 emailMessage,
                 {
-                  firstName: adminUser.firstName || 'Administrator',
+                  firstName: adminUser.firstName || "Administrator",
                   message: emailMessage,
-                  organizationName: 'Your Organization',
+                  organizationName: "Your Organization",
                 }
               );
               emails++;
             } catch (emailError) {
-              console.error('❌ Failed to send email to admin:', emailError);
+              console.error("❌ Failed to send email to admin:", emailError);
             }
           }
-
         } catch (error) {
-          console.error('❌ Error notifying admins:', error);
+          console.error("❌ Error notifying admins:", error);
         }
       }
-
     } catch (error) {
-      console.error('❌ Error processing expiring document notifications:', error);
+      console.error(
+        "❌ Error processing expiring document notifications:",
+        error
+      );
     }
 
     return { notifications, emails };
@@ -385,10 +406,10 @@ export class DocumentExpiryJob {
    * Get urgency level based on days remaining
    */
   private getUrgencyLevel(daysAhead: number): string {
-    if (daysAhead <= 1) return 'Today';
-    if (daysAhead <= 7) return 'This Week';
-    if (daysAhead <= 14) return 'Soon';
-    return 'In 30 Days';
+    if (daysAhead <= 1) return "Today";
+    if (daysAhead <= 7) return "This Week";
+    if (daysAhead <= 14) return "Soon";
+    return "In 30 Days";
   }
 
   /**
@@ -406,7 +427,10 @@ export class DocumentExpiryJob {
       running: this.cronJob?.running || false,
       schedule: this.config.cronSchedule,
       warningDays: this.config.warningDays,
-      nextRun: this.cronJob && typeof this.cronJob.nextDate === 'function' ? this.cronJob.nextDate()?.toDate() : undefined,
+      nextRun:
+        this.cronJob && typeof this.cronJob.nextDate === "function"
+          ? this.cronJob.nextDate()?.toDate()
+          : undefined,
     };
   }
 }

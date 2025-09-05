@@ -80,17 +80,19 @@ dashboardRouter.get(
  * 
  * Requires:
  * - Authentication (JWT token)
- * - HR or ADMIN role
  * - Optional query parameters for metrics configuration
+ * 
+ * Access Control:
+ * - HR/ADMIN: Returns organization-wide metrics
+ * - USER: Returns personal compliance metrics
  * 
  * Returns dashboard-ready compliance metrics and KPIs
  */
 dashboardRouter.get(
   '/compliance/metrics',
   authenticateToken,              // Verify JWT and populate req.user
-  requireHROrAdmin,               // Only HR and ADMIN can view metrics
   validateMetricsQuery,           // Validate query parameters
-  getComplianceMetricsController
+  getComplianceMetricsController  // Role-based filtering handled in controller
 );
 
 /**
@@ -99,17 +101,19 @@ dashboardRouter.get(
  * 
  * Requires:
  * - Authentication (JWT token)
- * - HR or ADMIN role
  * - Optional query parameters for filtering critical issues
+ * 
+ * Access Control:
+ * - HR/ADMIN: Returns organization-wide critical issues
+ * - USER: Returns personal critical compliance issues
  * 
  * Returns employees with expired documents (RED status)
  */
 dashboardRouter.get(
   '/compliance/critical',
   authenticateToken,              // Verify JWT and populate req.user
-  requireHROrAdmin,               // Only HR and ADMIN can view critical issues
   validateCriticalIssuesQuery,    // Validate query parameters
-  getCriticalComplianceIssuesController
+  getCriticalComplianceIssuesController // Role-based filtering handled in controller
 );
 
 /**
