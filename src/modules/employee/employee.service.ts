@@ -25,11 +25,11 @@ export interface EmployeeResponse {
   firstName: string;
   lastName: string;
   email: string;
-  dob: Date;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
+  dob: Date | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
   organizationId: string;
   userId: string | null;
   hasUser: boolean;
@@ -136,10 +136,10 @@ export async function createEmployee(
         lastName: data.lastName,
         email: data.email,
         dob: data.dob,
-        address: data.address || '',
-        city: data.city || '',
-        state: data.state || '',
-        country: data.country || '',
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        country: data.country || "",
         organizationId,
       },
       include: {
