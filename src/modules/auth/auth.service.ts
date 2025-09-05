@@ -134,6 +134,16 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
         },
       });
 
+      await tx.employee.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          organizationId: organization.id,
+          userId: user.id,
+        },
+      });
+
       return { user, organization };
     });
 
@@ -334,7 +344,7 @@ export async function acceptInvite(
 
     // Sign JWT token
     const jwtToken = signJWT(jwtPayload);
-    
+
     // Send organization-wide notification about new team member
     try {
       const notificationResult = await notificationService.createNotification(
@@ -342,11 +352,15 @@ export async function acceptInvite(
         "SUPERADMIN", // System-generated notification
         {
           title: "New Team Member Joined",
-          message: `${updatedUser.firstName} ${updatedUser.lastName || ""} has joined your organization`,
+          message: `${updatedUser.firstName} ${
+            updatedUser.lastName || ""
+          } has joined your organization`,
           type: "INFO",
           metadata: {
             newUserId: updatedUser.id,
-            newUserName: `${updatedUser.firstName} ${updatedUser.lastName || ""}`,
+            newUserName: `${updatedUser.firstName} ${
+              updatedUser.lastName || ""
+            }`,
             newUserEmail: updatedUser.email,
             joinedAt: new Date().toISOString(),
           },
@@ -578,7 +592,9 @@ export async function resetPassword(
  * Gets current user information and organization from database
  * Returns complete user profile and organization data
  */
-export async function getCurrentUser(userId: string): Promise<GetCurrentUserResponse> {
+export async function getCurrentUser(
+  userId: string
+): Promise<GetCurrentUserResponse> {
   try {
     // Fetch full user and organization data from database
     const user = await prisma.user.findUnique({

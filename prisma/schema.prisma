@@ -53,11 +53,11 @@ model User {
   organization   Organization @relation("OrganizationUsers", fields: [organizationId], references: [id])
 
   // Relationships
-  sessions  Session[]
-  employee  Employee? // If this user is also an employee in one org
-  documents Document[] @relation("DocumentUploads") // Documents uploaded by this user
-  notifications Notification[] // Direct notifications for this user
-  notificationReads NotificationRead[] // Track which notifications user has read
+  sessions            Session[]
+  employee            Employee? // If this user is also an employee in one org
+  documents           Document[]           @relation("DocumentUploads") // Documents uploaded by this user
+  notifications       Notification[] // Direct notifications for this user
+  notificationReads   NotificationRead[] // Track which notifications user has read
   passwordResetTokens PasswordResetToken[] // Password reset tokens for this user
 }
 
@@ -69,25 +69,25 @@ model Organization {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  users     User[]     @relation("OrganizationUsers") // All users in this organization
-  employees Employee[]
-  documents Document[] @relation("OrganizationDocuments")
+  users         User[]         @relation("OrganizationUsers") // All users in this organization
+  employees     Employee[]
+  documents     Document[]     @relation("OrganizationDocuments")
   notifications Notification[] // Notifications for this organization
 }
 
 model Employee {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   firstName String
   lastName  String
-  email     String   @unique
-  address   String
-  city      String
-  state     String
-  country   String
-  dob       DateTime
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  email     String    @unique
+  address   String?
+  city      String?
+  state     String?
+  country   String?
+  dob       DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime? // Soft delete field
 
   // Relationships
@@ -101,27 +101,27 @@ model Employee {
 }
 
 model Document {
-  id          String      @id @default(uuid())
-  title       String      // Document title
-  description String?     // Optional description
+  id          String       @id @default(uuid())
+  title       String // Document title
+  description String? // Optional description
   type        DocumentType // Document category
-  fileUrl     String      // Local path or S3 URL
-  fileName    String      // Original file name
-  fileSize    Int         // File size in bytes
-  mimeType    String      // MIME type of file
-  metadata    Json?       @db.JsonB // Additional structured data
-  expiresAt   DateTime?   // Optional expiry date
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?   // Soft delete timestamp
+  fileUrl     String // Local path or S3 URL
+  fileName    String // Original file name
+  fileSize    Int // File size in bytes
+  mimeType    String // MIME type of file
+  metadata    Json?        @db.JsonB // Additional structured data
+  expiresAt   DateTime? // Optional expiry date
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime? // Soft delete timestamp
 
   // Relationships
   uploadedById String
   uploadedBy   User   @relation("DocumentUploads", fields: [uploadedById], references: [id])
-  
+
   organizationId String
   organization   Organization @relation("OrganizationDocuments", fields: [organizationId], references: [id], onDelete: Cascade)
-  
+
   employeeId String?
   employee   Employee? @relation("EmployeeDocuments", fields: [employeeId], references: [id])
 
@@ -145,17 +145,17 @@ model Session {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  title     String   // Notification title
-  message   String   // Notification content
+  id        String           @id @default(uuid())
+  title     String // Notification title
+  message   String // Notification content
   type      NotificationType // Notification category
-  metadata  Json?    @db.JsonB // Optional structured data
-  createdAt DateTime @default(now())
+  metadata  Json?            @db.JsonB // Optional structured data
+  createdAt DateTime         @default(now())
 
   // Relationships
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+
   userId String? // Nullable - if null, it's a broadcast to all org users
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -171,14 +171,14 @@ model Notification {
 
 // Separate model to track who has read each notification
 model NotificationRead {
-  id             String      @id @default(uuid())
+  id             String   @id @default(uuid())
   notificationId String
   userId         String
-  readAt         DateTime    @default(now())
-  
-  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  readAt         DateTime @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Prevent duplicate read records for same user/notification
   @@unique([notificationId, userId])
   @@index([notificationId])
@@ -189,7 +189,7 @@ model NotificationRead {
 model PasswordResetToken {
   id        String   @id @default(uuid())
   token     String   @unique // Secure random token
-  userId    String   // User requesting password reset
+  userId    String // User requesting password reset
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime // Token expiry timestamp (typically 1 hour from creation)
   used      Boolean  @default(false) // Single-use token flag
