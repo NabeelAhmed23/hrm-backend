@@ -28,7 +28,7 @@ import {
 import { documentService } from '../../services/documentService';
 import { documentExportService } from '../../services/documentExportService';
 import { isAppError } from '../../utils/error/error';
-import { Role } from '../../../generated/prisma';
+import { Role, DocumentType } from '../../../generated/prisma';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -85,8 +85,96 @@ export const uploadDocumentController = [
       const user = req.user!;
       const { userId, orgId, role } = user;
 
-      // Validate request body
-      const validatedData = req.validated.body as UploadDocumentRequest;
+      // Extract and validate FormData payload from req.body
+      const formData = {
+        title: req.body.title?.trim(),
+        description: req.body.description?.trim(),
+        type: req.body.type,
+        employeeId: req.body.employeeId || undefined,
+        expiresAt: req.body.expiresAt || undefined,
+        metadata: req.body.metadata ? JSON.parse(req.body.metadata) : undefined,
+      };
+
+      // Basic validation for required fields
+      if (!formData.title || formData.title.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Document title is required',
+        });
+        return;
+      }
+
+      if (formData.title.length > 200) {
+        res.status(400).json({
+          success: false,
+          message: 'Document title cannot exceed 200 characters',
+        });
+        return;
+      }
+
+      if (!formData.type) {
+        res.status(400).json({
+          success: false,
+          message: 'Document type is required',
+        });
+        return;
+      }
+
+      // Validate document type enum
+      if (!Object.values(DocumentType).includes(formData.type as DocumentType)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid document type',
+        });
+        return;
+      }
+
+      if (formData.description && formData.description.length > 1000) {
+        res.status(400).json({
+          success: false,
+          message: 'Description cannot exceed 1000 characters',
+        });
+        return;
+      }
+
+      // Validate employee ID format if provided
+      if (formData.employeeId) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(formData.employeeId)) {
+          res.status(400).json({
+            success: false,
+            message: 'Employee ID must be a valid UUID',
+          });
+          return;
+        }
+      }
+
+      // Validate metadata JSON format if provided
+      if (req.body.metadata) {
+        try {
+          JSON.parse(req.body.metadata);
+        } catch (error) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid metadata JSON format',
+          });
+          return;
+        }
+      }
+
+      if (formData.expiresAt) {
+        const expiryDate = new Date(formData.expiresAt);
+        if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+          res.status(400).json({
+            success: false,
+            message: 'Expiry date must be a valid future date',
+          });
+          return;
+        }
+        formData.expiresAt = expiryDate.toISOString();
+      }
+
+      const validatedData = formData as UploadDocumentRequest;
 
       // Prepare file object for service
       const uploadedFile = {

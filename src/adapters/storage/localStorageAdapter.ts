@@ -1,9 +1,9 @@
 /**
  * Local Storage Adapter
- * 
+ *
  * Handles file storage in local development environment.
  * Files are saved to public/uploads/ directory and served via Express static middleware.
- * 
+ *
  * Features:
  * - Direct file system operations
  * - Public URL generation
@@ -11,15 +11,15 @@
  * - No signed URLs needed (direct access)
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { 
-  StorageAdapter, 
-  UploadedFile, 
-  StorageResult, 
-  DownloadUrlOptions 
-} from './storageAdapter';
-import { InternalServerError } from '../../utils/error/error';
+import fs from "fs/promises";
+import path from "path";
+import {
+  StorageAdapter,
+  UploadedFile,
+  StorageResult,
+  DownloadUrlOptions,
+} from "./storageAdapter";
+import { InternalServerError } from "../../utils/error/error";
 
 export class LocalStorageAdapter implements StorageAdapter {
   private readonly baseDir: string;
@@ -27,11 +27,11 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   constructor() {
     // Base directory for file uploads
-    this.baseDir = path.join(process.cwd(), 'public', 'uploads');
-    
+    this.baseDir = path.join(process.cwd(), "public", "uploads");
+
     // Public URL base (served by Express static middleware)
-    this.publicUrl = process.env.APP_URL || 'http://localhost:3005';
-    
+    this.publicUrl = "http://localhost:3005";
+
     // Ensure upload directory exists
     this.ensureUploadDirectory();
   }
@@ -84,15 +84,15 @@ export class LocalStorageAdapter implements StorageAdapter {
       // Build file path
       const orgPath = this.getOrgPath(organizationId);
       const filePath = path.join(orgPath, fileName);
-      
+
       // Write file to disk
       await fs.writeFile(filePath, file.buffer);
 
       // Generate relative path for storage in DB
-      const relativePath = path.join('uploads', organizationId, fileName);
-      
+      const relativePath = path.join("uploads", organizationId, fileName);
+
       // Generate public URL
-      const fileUrl = `${this.publicUrl}/${relativePath.replace(/\\\\/g, '/')}`;
+      const fileUrl = `${this.publicUrl}/${relativePath.replace(/\\\\/g, "/")}`;
 
       console.log(`📁 File uploaded locally: ${filePath}`);
 
@@ -102,10 +102,9 @@ export class LocalStorageAdapter implements StorageAdapter {
         fileSize: file.size,
         mimeType: file.mimeType,
       };
-
     } catch (error) {
-      console.error('❌ Local file upload error:', error);
-      throw new InternalServerError('Failed to upload file to local storage');
+      console.error("❌ Local file upload error:", error);
+      throw new InternalServerError("Failed to upload file to local storage");
     }
   }
 
@@ -118,17 +117,17 @@ export class LocalStorageAdapter implements StorageAdapter {
   ): Promise<string> {
     // For local storage, return direct public URL
     // fileUrl should be relative path like 'uploads/org-id/filename.pdf'
-    if (fileUrl.startsWith('http')) {
+    if (fileUrl.startsWith("http")) {
       // Already a full URL
       return fileUrl;
     }
 
     // Convert relative path to full public URL
-    const publicUrl = `${this.publicUrl}/${fileUrl.replace(/\\\\/g, '/')}`;
-    
+    const publicUrl = `${this.publicUrl}/${fileUrl.replace(/\\\\/g, "/")}`;
+
     // Note: options.expiresIn is ignored for local storage
     // since we serve files directly through Express static
-    
+
     return publicUrl;
   }
 
@@ -139,27 +138,26 @@ export class LocalStorageAdapter implements StorageAdapter {
     try {
       // Convert URL back to file path
       let filePath: string;
-      
-      if (fileUrl.startsWith('http')) {
+
+      if (fileUrl.startsWith("http")) {
         // Extract path from full URL
         const url = new URL(fileUrl);
-        filePath = path.join(process.cwd(), 'public', url.pathname);
+        filePath = path.join(process.cwd(), "public", url.pathname);
       } else {
         // Relative path
-        filePath = path.join(process.cwd(), 'public', fileUrl);
+        filePath = path.join(process.cwd(), "public", fileUrl);
       }
 
       // Check if file exists
       await fs.access(filePath);
-      
+
       // Delete file
       await fs.unlink(filePath);
-      
+
       console.log(`🗑️ File deleted from local storage: ${filePath}`);
       return true;
-
     } catch (error) {
-      console.error('❌ Error deleting local file:', error);
+      console.error("❌ Error deleting local file:", error);
       return false;
     }
   }
@@ -171,12 +169,12 @@ export class LocalStorageAdapter implements StorageAdapter {
     try {
       // Convert URL back to file path
       let filePath: string;
-      
-      if (fileUrl.startsWith('http')) {
+
+      if (fileUrl.startsWith("http")) {
         const url = new URL(fileUrl);
-        filePath = path.join(process.cwd(), 'public', url.pathname);
+        filePath = path.join(process.cwd(), "public", url.pathname);
       } else {
-        filePath = path.join(process.cwd(), 'public', fileUrl);
+        filePath = path.join(process.cwd(), "public", fileUrl);
       }
 
       await fs.access(filePath);
@@ -197,25 +195,24 @@ export class LocalStorageAdapter implements StorageAdapter {
     try {
       // Convert URL back to file path
       let filePath: string;
-      
-      if (fileUrl.startsWith('http')) {
+
+      if (fileUrl.startsWith("http")) {
         const url = new URL(fileUrl);
-        filePath = path.join(process.cwd(), 'public', url.pathname);
+        filePath = path.join(process.cwd(), "public", url.pathname);
       } else {
-        filePath = path.join(process.cwd(), 'public', fileUrl);
+        filePath = path.join(process.cwd(), "public", fileUrl);
       }
 
       const stats = await fs.stat(filePath);
-      
+
       return {
         size: stats.size,
         lastModified: stats.mtime,
         mimeType: undefined, // Would need to infer from extension or store separately
       };
-
     } catch (error) {
-      console.error('❌ Error getting file metadata:', error);
-      throw new InternalServerError('Failed to get file metadata');
+      console.error("❌ Error getting file metadata:", error);
+      throw new InternalServerError("Failed to get file metadata");
     }
   }
 }

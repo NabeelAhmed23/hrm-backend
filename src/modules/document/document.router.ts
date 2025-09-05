@@ -76,8 +76,7 @@ documentRouter.post(
   '/',
   authenticateToken,              // Verify JWT and populate req.user
   requireHROrAdmin,               // Only HR and ADMIN can upload documents
-  validateUploadDocument,         // Validate request body metadata
-  uploadDocumentController        // Handle file upload (includes multer middleware)
+  uploadDocumentController        // Handle file upload (includes multer middleware and FormData parsing)
 );
 
 /**
